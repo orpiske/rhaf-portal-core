@@ -1,0 +1,6 @@
+[alias]
+# Build a native container image, optionally pushing its architecture-specific tag.
+build-image = ["run", "--quiet", "-p", "xtask", "--", "build-image"]
+
+# Publish a manifest combining the existing x86_64 and aarch64 images.
+build-image-manifest = ["run", "--quiet", "-p", "xtask", "--", "build-image-manifest"]

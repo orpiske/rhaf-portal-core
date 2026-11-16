@@ -1,0 +1,10 @@
+target/
+.git/
+.github/
+.claude/
+*.md
+!README.md
+wanaku.yaml
+wanaku.local*.yaml
+actions/*/target/
+actions/dist/
