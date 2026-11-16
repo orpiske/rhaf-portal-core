@@ -36,6 +36,8 @@ unused_variables = "deny"
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
+todo = "deny"
+unimplemented = "deny"
 
 # Correctness
 cast_possible_truncation = "warn"

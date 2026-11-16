@@ -15,8 +15,9 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-The workspace uses Wanaku's Rust and Clippy settings. The scaffold has no runtime
-dependencies. Integration and end-to-end test infrastructure will be added later.
+The workspace builds on Wanaku's Rust and Clippy settings. It also denies
+`todo!()` and `unimplemented!()` to reject unfinished code. The scaffold has no
+runtime dependencies. Integration and end-to-end test infrastructure will be added later.
 
 ## Container image
 
