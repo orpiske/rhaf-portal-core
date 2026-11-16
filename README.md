@@ -2,7 +2,6 @@
 
 RHAF Portal Core is the Rust runtime for RHAF Portal. The runtime builds on the [Wanaku](https://github.com/wanaku-ai/wanaku) project.
 
-
 ## Build and run
 
 Rust 1.96.0 is pinned in `rust-toolchain.toml`. Install Rust through rustup, then run:
@@ -18,6 +17,20 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 The workspace builds on Wanaku's Rust and Clippy settings. It also denies
 `todo!()` and `unimplemented!()` to reject unfinished code. The scaffold has no
 runtime dependencies. Integration and end-to-end test infrastructure will be added later.
+
+Every workspace crate must inherit the shared lint settings. Add this to each
+crate's `Cargo.toml`:
+
+```toml
+[lints]
+workspace = true
+```
+
+PR CI checks this requirement. To run the check locally, use Python 3.11 or later:
+
+```bash
+python3 .github/check-workspace-lints.py
+```
 
 ## Container image
 
