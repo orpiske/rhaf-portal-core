@@ -10,7 +10,7 @@ This rule file contains build tools, commands, and code style constraints for th
 - **Lint command:** `cargo clippy --workspace --all-targets --locked -- -D warnings`
 - **Module-specific build:** yes
 - **Parallelized Maven:** n/a
-- **Code style restrictions:** Rust 2024; MSRV 1.96; unsafe code, `unwrap`, `expect`, and `panic` are denied
+- **Code style restrictions:** Rust 2024; MSRV 1.96; unsafe code, `unwrap`, `expect`, `panic`, `todo!`, and `unimplemented!` are denied
 
 ## Version
 

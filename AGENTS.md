@@ -1,6 +1,6 @@
 # RHAF Portal Core
 
-Rust runtime for RHAF Portal. The runtime builds on the [Wanaku](https://github.com/wanaku-ai/wanaku) project. 
+Rust runtime for RHAF Portal. The runtime builds on the [Wanaku](https://github.com/wanaku-ai/wanaku) project.
 The operator and portal UI belong in separate repositories.
 
 ## Core Guidelines
@@ -22,8 +22,10 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 ## Build Info
 
 - Rust 2024; MSRV 1.96; toolchain pinned to 1.96.0.
-- Workspace Rust and Clippy lints match Wanaku. Thresholds are in `clippy.toml`.
-- Unsafe code, `unwrap`, `expect`, and `panic` are denied.
+- Workspace Rust and Clippy lints build on Wanaku. Thresholds are in `clippy.toml`.
+- Unsafe code, `unwrap`, `expect`, `panic`, `todo!`, and `unimplemented!` are denied.
+- Every workspace crate must set `[lints] workspace = true` in its manifest.
+- Run `python3 .github/check-workspace-lints.py` to check inheritance (Python 3.11+).
 - The Core scaffold has no runtime dependencies.
 
 ## Repository Layout
