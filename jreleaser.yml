@@ -1,0 +1,55 @@
+# CI builds the archives; JReleaser signs and publishes them.
+project:
+  name: rhaf-portal-core
+  description: RHAF Portal Core
+  longDescription: Rust runtime for RHAF Portal, built on Wanaku.
+  authors:
+    - The RHAF Portal Development Team
+  license: Apache-2.0
+  links:
+    homepage: https://github.com/rhaf-ai/rhaf-portal-core
+    bugTracker: https://github.com/rhaf-ai/rhaf-portal-core/issues
+  inceptionYear: 2026
+  tags:
+    - ai
+    - mcp
+    - rust
+
+signing:
+  active: ALWAYS
+  armored: true
+
+checksum:
+  name: checksums.txt
+  individual: false
+  algorithms:
+    - SHA-256
+
+release:
+  github:
+    owner: rhaf-ai
+    name: rhaf-portal-core
+    overwrite: false
+    update:
+      enabled: true
+    skipTag: false
+    milestone:
+      close: false
+    changelog:
+      formatted: ALWAYS
+      contentTemplate: jreleaser/changelog.tpl
+
+distributions:
+  rhaf-portal-core:
+    type: BINARY
+    executable:
+      name: rhaf-portal-core
+    artifacts:
+      - path: dist/rhaf-portal-core-{{projectVersion}}-linux-x86_64.tar.gz
+        platform: linux-x86_64
+      - path: dist/rhaf-portal-core-{{projectVersion}}-linux-aarch64.tar.gz
+        platform: linux-aarch_64
+      - path: dist/rhaf-portal-core-{{projectVersion}}-macos-x86_64.tar.gz
+        platform: osx-x86_64
+      - path: dist/rhaf-portal-core-{{projectVersion}}-macos-aarch64.tar.gz
+        platform: osx-aarch_64
