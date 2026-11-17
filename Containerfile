@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Rust toolchain and build dependencies, following Wanaku's Fedora build.
-FROM registry.fedoraproject.org/fedora:44 AS rust-base
+# Rust toolchain and build dependencies.
+FROM registry.access.redhat.com/ubi10/ubi:10.1 AS rust-base
 
 RUN dnf install -y gcc gcc-c++ openssl-devel pkgconf-pkg-config cmake make \
     && dnf clean all
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
     cargo build --release --locked -p rhaf-portal-core \
     && cp target/release/rhaf-portal-core /usr/local/bin/rhaf-portal-core
 
-FROM registry.fedoraproject.org/fedora-minimal:44
+FROM registry.access.redhat.com/ubi10/ubi-minimal:10.1
 
 LABEL org.opencontainers.image.source="https://github.com/rhaf-ai/rhaf-portal-core" \
     org.opencontainers.image.description="RHAF Portal Core" \
