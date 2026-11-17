@@ -34,8 +34,8 @@ python3 .github/check-workspace-lints.py
 
 ## Container image
 
-The multi-stage `Containerfile` uses Fedora 44 to build the binary and
-Fedora Minimal 44 to run it as a non-root user. The bootstrap image prints the
+The multi-stage `Containerfile` uses Red Hat UBI 10.1 to build the binary and
+UBI 10.1 Minimal to run it as a non-root user. The bootstrap image prints the
 same greeting and exits. It does not expose an API or health endpoint yet.
 
 Build with Docker or Podman:

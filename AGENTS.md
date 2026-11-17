@@ -33,7 +33,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 - `src/main.rs`: bootstrap executable.
 - `xtask/`: container build and manifest publication commands.
 - `.cargo/config.toml`: Cargo aliases for the build task runner.
-- `Containerfile`: Fedora builder and Fedora Minimal runtime.
+- `Containerfile`: UBI 10.1 builder and UBI 10.1 Minimal runtime.
 - `.github/workflows/`: PR, main, link, early-access, and release workflows.
 - `jreleaser.yml` and `jreleaser/`: release metadata and changelog template.
 - `.oss-ai-helper-rules/`: project metadata and contribution rules.
