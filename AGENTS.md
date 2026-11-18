@@ -9,6 +9,8 @@ Think before you write. Do not create abstractions unnecessarily. Simplicity
 matters: use the minimum code required to achieve the result. Do not bypass Rust
 or Clippy rules.
 
+Use Rust for tests and workspace checks. Do not add Python code or runtime requirements.
+
 ## Quick Start
 
 ```bash
@@ -25,12 +27,16 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 - Workspace Rust and Clippy lints build on Wanaku. Thresholds are in `clippy.toml`.
 - Unsafe code, `unwrap`, `expect`, `panic`, `todo!`, and `unimplemented!` are denied.
 - Every workspace crate must set `[lints] workspace = true` in its manifest.
-- Run `python3 .github/check-workspace-lints.py` to check inheritance (Python 3.11+).
-- The Core scaffold has no runtime dependencies.
+- Run `cargo check-workspace-lints` to check inheritance.
+- Wanaku dependencies use one pinned Git revision. The upstream admin UI is disabled.
 
 ## Repository Layout
 
-- `src/main.rs`: bootstrap executable.
+- `src/main.rs`: embedded Wanaku executable.
+- `src/startup.rs`: CLI, bootstrap validation, and persistence resources.
+- `src/runtime.rs`: listeners, background services, and orderly shutdown.
+- `src/pipeline.yaml`: internal MCP pipeline.
+- `tests/runtime_integration.rs`: real MCP fixture and process integration checks.
 - `xtask/`: container build and manifest publication commands.
 - `.cargo/config.toml`: Cargo aliases for the build task runner.
 - `Containerfile`: UBI 10.1 builder and UBI 10.1 Minimal runtime.
@@ -64,7 +70,7 @@ secrets, and release version rules.
 - Use `#[expect(..., reason = "...")]` only for justified lint exceptions.
 - Group related arguments into context structs instead of suppressing argument limits.
 - Add meaningful tests and documentation for new features.
-- Integration and end-to-end test infrastructure will be added later.
+- Run the process integration check with the controlled MCP fixture. See README.md.
 - Keep similar changes in a single commit before opening a pull request.
 - Use `git mv` to move tracked files.
 - Prefer signed commits; unsigned commits are permitted if signing fails.

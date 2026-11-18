@@ -3,7 +3,7 @@
 # Rust toolchain and build dependencies.
 FROM registry.access.redhat.com/ubi10/ubi:10.1 AS rust-base
 
-RUN dnf install -y gcc gcc-c++ openssl-devel pkgconf-pkg-config cmake make \
+RUN dnf install -y gcc gcc-c++ git openssl-devel pkgconf-pkg-config cmake make \
     && dnf clean all
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.96.0
 ENV PATH="/root/.cargo/bin:${PATH}"
@@ -18,6 +18,7 @@ RUN mkdir -p src xtask/src \
     && printf 'fn main() {}\n' > src/main.rs \
     && printf 'fn main() {}\n' > xtask/src/main.rs
 RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/src/target \
     cargo build --release --locked -p rhaf-portal-core
 
@@ -25,6 +26,7 @@ COPY src src
 # Ensure Cargo rebuilds the real sources after the cache build.
 RUN touch src/main.rs
 RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/src/target \
     cargo build --release --locked -p rhaf-portal-core \
     && cp target/release/rhaf-portal-core /usr/local/bin/rhaf-portal-core
@@ -35,7 +37,7 @@ LABEL org.opencontainers.image.source="https://github.com/rhaf-ai/rhaf-portal-co
     org.opencontainers.image.description="RHAF Portal Core" \
     org.opencontainers.image.licenses="Apache-2.0"
 
-RUN microdnf install -y ca-certificates \
+RUN microdnf install -y ca-certificates openssl-libs \
     && microdnf clean all \
     && mkdir -p /etc/rhaf-portal \
     && chown 0:0 /etc/rhaf-portal \

@@ -28,8 +28,6 @@ jobs:
         with:
           toolchain: '1.96.0'
           components: clippy, rustfmt
-      - name: Check workspace lint inheritance
-        run: python3 .github/check-workspace-lints.py
       - name: Cache Cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -40,6 +38,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+      - name: Check workspace lint inheritance
+        run: cargo check-workspace-lints
       - name: Check formatting
         run: cargo fmt --all --check
       - name: Clippy
@@ -67,6 +67,30 @@ jobs:
         run: cargo build --workspace --locked --verbose
       - name: Test
         run: cargo test --workspace --locked --verbose
+      - name: Set up Java for the controlled MCP fixture
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build the controlled MCP fixture
+        id: fixture
+        run: |
+          git clone https://github.com/rhaf-ai/rhaf-portal-tests.git "$RUNNER_TEMP/rhaf-portal-tests"
+          git -C "$RUNNER_TEMP/rhaf-portal-tests" checkout 2fa44efdbc42e01384d0bef5776b703cdb9956ab
+          mvn -B -f "$RUNNER_TEMP/rhaf-portal-tests/pom.xml" -pl fixtures/test-mcp-server -am package -DskipTests
+          printf 'revision=%s\n' "$(git -C "$RUNNER_TEMP/rhaf-portal-tests" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Verify the embedded runtime
+        env:
+          RHAF_MCP_FIXTURE_JAR: ${{ runner.temp }}/rhaf-portal-tests/fixtures/test-mcp-server/target/quarkus-app/quarkus-run.jar
+          RHAF_MCP_FIXTURE_REVISION: ${{ steps.fixture.outputs.revision }}
+        run: cargo test --locked --test runtime_integration -- --ignored --nocapture
+      - name: Upload runtime integration evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: runtime-integration-evidence
+          path: target/runtime-evidence
+          if-no-files-found: ignore
 
   container:
     strategy:
@@ -78,5 +102,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build container image
         run: docker build -f Containerfile -t rhaf-portal-core:pr .
-      - name: Run bootstrap image
-        run: test "$(docker run --rm rhaf-portal-core:pr)" = 'Hello, RHAF Portal!'
+      - name: Run image executable
+        run: docker run --rm rhaf-portal-core:pr --version

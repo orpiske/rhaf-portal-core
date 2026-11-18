@@ -46,6 +46,7 @@ plans
 working-data/
 .bob/
 /target
+/data/
 ui/admin/dist/
 ui/admin/node_modules/
 tests/e2e/ui/node_modules/
