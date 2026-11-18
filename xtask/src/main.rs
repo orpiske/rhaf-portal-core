@@ -1,4 +1,6 @@
-//! Container build tasks invoked through the Cargo aliases in `.cargo/config.toml`.
+//! Workspace validation and container tasks invoked through Cargo aliases.
+
+mod workspace_lints;
 
 use std::process::{Command, Stdio};
 
@@ -16,6 +18,8 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Task {
+    /// Require every workspace crate to inherit the shared lint settings.
+    CheckWorkspaceLints,
     /// Build an image with the native architecture appended to its tag.
     BuildImage {
         /// Base image reference, including a tag.
@@ -35,6 +39,7 @@ enum Task {
 
 fn main() -> anyhow::Result<()> {
     match Cli::parse().command {
+        Task::CheckWorkspaceLints => workspace_lints::check(),
         Task::BuildImage { tag, push } => build_image(&tag, push),
         Task::BuildImageManifest { tag } => build_manifest(&tag),
     }
