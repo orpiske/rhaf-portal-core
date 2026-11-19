@@ -11,7 +11,7 @@ use clap::Parser;
 
 const VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
-    " (Wanaku bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b)"
+    " (Wanaku c56e75ca50e65c3b0e689b9a96a1802fb1da15be)"
 );
 
 const ASSEMBLY_ERROR: &str =
@@ -104,7 +104,7 @@ mod tests {
             .split_once('\n')
             .context("server dependency line missing")?;
         let unpinned = format!(
-            "{before}wanaku-server = {{ git = 'https://github.com/wanaku-ai/wanaku', branch = 'main' }} # rev = 'bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b'\n{remainder}"
+            "{before}wanaku-server = {{ git = 'https://github.com/wanaku-ai/wanaku', branch = 'main' }} # rev = 'c56e75ca50e65c3b0e689b9a96a1802fb1da15be'\n{remainder}"
         );
         assert!(verify_revisions(&unpinned).is_err());
         Ok(())

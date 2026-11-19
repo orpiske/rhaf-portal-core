@@ -79,6 +79,10 @@ impl Harness {
         format!("http://{}/default/mcp", self.mcp)
     }
 
+    fn virtual_mcp_url(&self) -> String {
+        format!("http://{}/virtual-ns/integration/mcp", self.mcp)
+    }
+
     fn core_command(&self, config: &Path, directory: &Path) -> Command {
         let mut command = Command::new(CORE);
         command
@@ -155,6 +159,7 @@ impl Harness {
                 "invalid configuration and occupied listener rejected before startup",
                 "two stateless client handshakes and ping",
                 "shared management and MCP registry before and after restart",
+                "virtual namespace qualified catalog, dispatch, updates, and restart recovery",
                 "registry state and exact tool-call audit IDs survive SIGTERM shutdown",
                 "forward recovery without replay", "admin UI disabled",
             ],

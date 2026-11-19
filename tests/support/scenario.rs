@@ -9,11 +9,12 @@ use super::{Expected, Harness, http::names};
 impl Harness {
     pub async fn exercise(&self) -> Result<Expected> {
         self.register_forward().await?;
+        self.register_virtual_namespace().await?;
         self.http
             .initialize(&self.mcp_url(), "first-client")
             .await?;
         self.http
-            .initialize(&self.mcp_url(), "second-client")
+            .initialize(&self.virtual_mcp_url(), "second-client")
             .await?;
         self.verify_shared_registry().await?;
         let state = self.verify_real_calls().await?;
@@ -22,6 +23,7 @@ impl Harness {
             self.http.tools(&self.mcp_url()).await? == BTreeSet::from(["set_state".to_owned()]),
             "management update was not shared"
         );
+        self.verify_virtual_catalog().await?;
         for path in ["/", "/index.html", "/ui/"] {
             let reply = self
                 .http
@@ -58,6 +60,23 @@ impl Harness {
         Ok(())
     }
 
+    async fn register_virtual_namespace(&self) -> Result<()> {
+        let reply = self
+            .http
+            .request(
+                Method::POST,
+                &self.management_url("/api/v1/namespaces"),
+                Some(&json!({"name": "integration", "members": ["default"]})),
+            )
+            .await?;
+        ensure!(
+            reply.status == 200,
+            "virtual namespace creation failed: {}",
+            reply.body
+        );
+        Ok(())
+    }
+
     async fn verify_shared_registry(&self) -> Result<()> {
         let tools = self.http.tools(&self.mcp_url()).await?;
         ensure!(
@@ -73,6 +92,22 @@ impl Harness {
             names(&managed.body["data"])? == tools,
             "management and MCP registries differ"
         );
+        self.verify_virtual_catalog().await?;
+        Ok(())
+    }
+
+    async fn verify_virtual_catalog(&self) -> Result<()> {
+        let expected = self
+            .http
+            .tools(&self.mcp_url())
+            .await?
+            .into_iter()
+            .map(|name| format!("default/{name}"))
+            .collect::<BTreeSet<_>>();
+        ensure!(
+            self.http.tools(&self.virtual_mcp_url()).await? == expected,
+            "virtual catalog does not reflect its concrete member"
+        );
         Ok(())
     }
 
@@ -86,8 +121,8 @@ impl Harness {
         let read = self
             .http
             .call(
-                &self.mcp_url(),
-                "read_state",
+                &self.virtual_mcp_url(),
+                "default/read_state",
                 json!({"target": arguments["target"]}),
             )
             .await?;
@@ -173,9 +208,10 @@ impl Harness {
 
     pub async fn verify_restart(&self, expected: &Expected) -> Result<()> {
         self.http
-            .initialize(&self.mcp_url(), "after-restart")
+            .initialize(&self.virtual_mcp_url(), "after-restart")
             .await?;
         self.verify_recovered_registry().await?;
+        self.verify_recovered_namespace().await?;
         self.verify_recovered_audit(&expected.audit_ids).await?;
         self.verify_recovered_call(&expected.state).await?;
         self.verify_no_replay_and_cleanup().await
@@ -201,6 +237,23 @@ impl Harness {
         Ok(())
     }
 
+    async fn verify_recovered_namespace(&self) -> Result<()> {
+        let namespace = self
+            .http
+            .request(
+                Method::GET,
+                &self.management_url("/api/v1/namespaces/integration"),
+                None,
+            )
+            .await?;
+        ensure!(
+            namespace.status == 200 && namespace.body["data"]["members"] == json!(["default"]),
+            "persisted virtual namespace was lost"
+        );
+        self.verify_virtual_catalog().await?;
+        Ok(())
+    }
+
     async fn verify_recovered_audit(&self, audit_ids: &BTreeSet<String>) -> Result<()> {
         let recovered = event_ids(self.audit_events().await?.iter())?;
         ensure!(
@@ -223,11 +276,12 @@ impl Harness {
                 .contains("read_state"),
             "recovered registry is not shared"
         );
+        self.verify_virtual_catalog().await?;
         let result = self
             .http
             .call(
-                &self.mcp_url(),
-                "read_state",
+                &self.virtual_mcp_url(),
+                "default/read_state",
                 json!({"target": expected["target"]}),
             )
             .await?;
@@ -256,6 +310,7 @@ impl Harness {
             deleted.status == 200 && self.http.tools(&self.mcp_url()).await?.is_empty(),
             "forward cleanup did not update MCP"
         );
+        self.verify_virtual_catalog().await?;
         Ok(())
     }
 }
