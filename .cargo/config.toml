@@ -1,4 +1,5 @@
 [alias]
+openapi = ["run", "--quiet", "--locked", "-p", "rhaf-api", "--bin", "rhaf-openapi", "--"]
 check-workspace-lints = ["run", "--quiet", "--locked", "-p", "xtask", "--", "check-workspace-lints"]
 # Build a native container image, optionally pushing its architecture-specific tag.
 build-image = ["run", "--quiet", "-p", "xtask", "--", "build-image"]

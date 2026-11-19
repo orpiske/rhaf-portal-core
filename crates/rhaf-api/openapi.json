@@ -1,0 +1,953 @@
+{
+  "components": {
+    "schemas": {
+      "Catalog": {
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "products": {
+            "description": "Empty when status is absent or invalid. Product IDs must be unique.",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CatalogStatus"
+          }
+        },
+        "required": [
+          "status",
+          "products",
+          "message"
+        ],
+        "type": "object"
+      },
+      "CatalogStatus": {
+        "enum": [
+          "loaded",
+          "absent",
+          "invalid"
+        ],
+        "type": "string"
+      },
+      "CredentialBindings": {
+        "additionalProperties": false,
+        "description": "References to configured binding identifiers. Secret values are never accepted here.",
+        "properties": {
+          "discovery": {
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invocation": {
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "Forward": {
+        "description": "Lifecycle state is independent of upstream reachability and progressive repair.",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "available": {
+            "description": "Null means availability has not been determined. It does not mean false.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "conventionalNamespace": {
+            "type": "string"
+          },
+          "credentialBindings": {
+            "$ref": "#/components/schemas/CredentialBindings"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "message": {
+            "description": "Safe diagnostic text. Does not contain secrets or internal labels.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "namespaceBase": {
+            "type": "string"
+          },
+          "progressiveNamespace": {
+            "type": "string"
+          },
+          "registrationId": {
+            "description": "Opaque read-only identity. Stable through replacement; changes after recreation.",
+            "minLength": 1,
+            "readOnly": true,
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/LifecycleState"
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "namespaceBase",
+          "conventionalNamespace",
+          "progressiveNamespace",
+          "registrationId",
+          "labels",
+          "credentialBindings",
+          "state",
+          "available",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ForwardRequest": {
+        "additionalProperties": false,
+        "description": "Desired configuration only. Runtime state and internal labels are not accepted.",
+        "properties": {
+          "address": {
+            "description": "Absolute HTTP(S) MCP endpoint. Do not include embedded credentials.",
+            "format": "uri",
+            "pattern": "^https?://[^/?#@]+([/?#].*)?$",
+            "type": "string"
+          },
+          "credentialBindings": {
+            "$ref": "#/components/schemas/CredentialBindings"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "User labels only. Reserved RHAF lifecycle labels are rejected.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "name": {
+            "description": "Immutable name. A replacement body must match the path name.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "namespaceBase": {
+            "description": "Immutable base. Core derives <base>-all and <base>-progressive.",
+            "maxLength": 51,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,49}[a-z0-9])?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "namespaceBase"
+        ],
+        "type": "object"
+      },
+      "LifecycleState": {
+        "enum": [
+          "registering",
+          "active",
+          "failedRegistrationCleanup",
+          "deleting",
+          "deleted"
+        ],
+        "type": "string"
+      },
+      "Product": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique within the catalog.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/ProductLink"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "type": "object"
+      },
+      "ProductLink": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "url": {
+            "description": "Absolute HTTP(S) URL without embedded credentials. Core does not probe it.",
+            "format": "uri",
+            "pattern": "^https?://[^/?#@]+([/?#].*)?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "type": "object"
+      },
+      "Response_Catalog": {
+        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "properties": {
+          "data": {
+            "properties": {
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "products": {
+                "description": "Empty when status is absent or invalid. Product IDs must be unique.",
+                "items": {
+                  "$ref": "#/components/schemas/Product"
+                },
+                "type": "array"
+              },
+              "status": {
+                "$ref": "#/components/schemas/CatalogStatus"
+              }
+            },
+            "required": [
+              "status",
+              "products",
+              "message"
+            ],
+            "type": "object"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "error"
+        ],
+        "type": "object"
+      },
+      "Response_Forward": {
+        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "properties": {
+          "data": {
+            "description": "Lifecycle state is independent of upstream reachability and progressive repair.",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "available": {
+                "description": "Null means availability has not been determined. It does not mean false.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "conventionalNamespace": {
+                "type": "string"
+              },
+              "credentialBindings": {
+                "$ref": "#/components/schemas/CredentialBindings"
+              },
+              "labels": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "message": {
+                "description": "Safe diagnostic text. Does not contain secrets or internal labels.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "namespaceBase": {
+                "type": "string"
+              },
+              "progressiveNamespace": {
+                "type": "string"
+              },
+              "registrationId": {
+                "description": "Opaque read-only identity. Stable through replacement; changes after recreation.",
+                "minLength": 1,
+                "readOnly": true,
+                "type": "string"
+              },
+              "state": {
+                "$ref": "#/components/schemas/LifecycleState"
+              }
+            },
+            "required": [
+              "name",
+              "address",
+              "namespaceBase",
+              "conventionalNamespace",
+              "progressiveNamespace",
+              "registrationId",
+              "labels",
+              "credentialBindings",
+              "state",
+              "available",
+              "message"
+            ],
+            "type": "object"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "error"
+        ],
+        "type": "object"
+      },
+      "Response_String": {
+        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "error"
+        ],
+        "type": "object"
+      },
+      "Response_Vec_Forward": {
+        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "properties": {
+          "data": {
+            "items": {
+              "description": "Lifecycle state is independent of upstream reachability and progressive repair.",
+              "properties": {
+                "address": {
+                  "type": "string"
+                },
+                "available": {
+                  "description": "Null means availability has not been determined. It does not mean false.",
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "conventionalNamespace": {
+                  "type": "string"
+                },
+                "credentialBindings": {
+                  "$ref": "#/components/schemas/CredentialBindings"
+                },
+                "labels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "Safe diagnostic text. Does not contain secrets or internal labels.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "namespaceBase": {
+                  "type": "string"
+                },
+                "progressiveNamespace": {
+                  "type": "string"
+                },
+                "registrationId": {
+                  "description": "Opaque read-only identity. Stable through replacement; changes after recreation.",
+                  "minLength": 1,
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "state": {
+                  "$ref": "#/components/schemas/LifecycleState"
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "namespaceBase",
+                "conventionalNamespace",
+                "progressiveNamespace",
+                "registrationId",
+                "labels",
+                "credentialBindings",
+                "state",
+                "available",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "error"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Planned lifecycle and catalog contracts. Path declarations do not establish implemented routing.",
+    "license": {
+      "identifier": "Apache-2.0",
+      "name": "Apache-2.0"
+    },
+    "title": "RHAF Portal API",
+    "version": "0.1.0-dev"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/rhaf/v1/catalog": {
+      "get": {
+        "description": "Read the configured product catalog. Absent or invalid content returns HTTP 200 with an empty products list and a safe message. Catalog reads do not register products, probe URLs, or report availability.",
+        "operationId": "read_catalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "absent": {
+                    "value": {
+                      "data": {
+                        "message": null,
+                        "products": [],
+                        "status": "absent"
+                      },
+                      "error": null
+                    }
+                  },
+                  "invalid": {
+                    "value": {
+                      "data": {
+                        "message": "Catalog validation failed",
+                        "products": [],
+                        "status": "invalid"
+                      },
+                      "error": null
+                    }
+                  },
+                  "loaded": {
+                    "value": {
+                      "data": {
+                        "message": null,
+                        "products": [
+                          {
+                            "displayName": "Jolokia",
+                            "id": "jolokia",
+                            "links": [
+                              {
+                                "label": "Documentation",
+                                "url": "https://jolokia.org/"
+                              }
+                            ]
+                          }
+                        ],
+                        "status": "loaded"
+                      },
+                      "error": null
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Catalog"
+                }
+              }
+            },
+            "description": "Loaded, absent, or invalid catalog"
+          }
+        },
+        "tags": [
+          "Catalog"
+        ]
+      }
+    },
+    "/api/rhaf/v1/forwards": {
+      "get": {
+        "description": "List lifecycle registrations, including reserved entries with incomplete cleanup. Do not report durable absence before cleanup persistence completes.",
+        "operationId": "list_forwards",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Vec_Forward"
+                }
+              }
+            },
+            "description": "Registrations"
+          }
+        },
+        "tags": [
+          "Lifecycle"
+        ]
+      },
+      "post": {
+        "description": "Create a registration. Duplicate names and reserved namespace bases conflict. A valid unavailable endpoint can remain registered. Successful mutations cross the persistence boundary.",
+        "operationId": "create_forward",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForwardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "value": {
+                      "data": {
+                        "address": "https://mcp.example.test/mcp",
+                        "available": true,
+                        "conventionalNamespace": "jolokia-all",
+                        "credentialBindings": {},
+                        "labels": {},
+                        "message": null,
+                        "name": "jolokia",
+                        "namespaceBase": "jolokia",
+                        "progressiveNamespace": "jolokia-progressive",
+                        "registrationId": "registration-123",
+                        "state": "active"
+                      },
+                      "error": null
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Forward"
+                }
+              }
+            },
+            "description": "Registration persisted"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "failedRegistrationCleanup": {
+                    "value": {
+                      "data": {
+                        "address": "https://mcp.example.test/mcp",
+                        "available": false,
+                        "conventionalNamespace": "jolokia-all",
+                        "credentialBindings": {},
+                        "labels": {},
+                        "message": null,
+                        "name": "jolokia",
+                        "namespaceBase": "jolokia",
+                        "progressiveNamespace": "jolokia-progressive",
+                        "registrationId": "registration-123",
+                        "state": "failedRegistrationCleanup"
+                      },
+                      "error": null
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Forward"
+                }
+              }
+            },
+            "description": "Failed registration cleanup remains pending; the base stays reserved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid": {
+                    "value": {
+                      "data": null,
+                      "error": "namespaceBase is invalid"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Invalid configuration or reserved labels"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Name or namespace base conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Persistence failed; completion is not confirmed"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Persistence timed out; completion is not confirmed"
+          }
+        },
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/api/rhaf/v1/forwards/{name}": {
+      "delete": {
+        "description": "Persist the deletion marker before cleanup. Remove the conventional namespace last. Repeated deletion is idempotent. Keep the namespace base reserved through durable completion. Do not delete workloads, Secrets, PVCs, or binding definitions.",
+        "operationId": "delete_forward",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "completed": {
+                    "value": {
+                      "data": {
+                        "address": "https://mcp.example.test/mcp",
+                        "available": null,
+                        "conventionalNamespace": "jolokia-all",
+                        "credentialBindings": {},
+                        "labels": {},
+                        "message": null,
+                        "name": "jolokia",
+                        "namespaceBase": "jolokia",
+                        "progressiveNamespace": "jolokia-progressive",
+                        "registrationId": "registration-123",
+                        "state": "deleted"
+                      },
+                      "error": null
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Forward"
+                }
+              }
+            },
+            "description": "Deletion durably completed"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "pendingCleanup": {
+                    "value": {
+                      "data": {
+                        "address": "https://mcp.example.test/mcp",
+                        "available": null,
+                        "conventionalNamespace": "jolokia-all",
+                        "credentialBindings": {},
+                        "labels": {},
+                        "message": null,
+                        "name": "jolokia",
+                        "namespaceBase": "jolokia",
+                        "progressiveNamespace": "jolokia-progressive",
+                        "registrationId": "registration-123",
+                        "state": "deleting"
+                      },
+                      "error": null
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Forward"
+                }
+              }
+            },
+            "description": "Cleanup pending; registration remains readable"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Confirmed absent"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Ownership or lifecycle conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Persistence failed; absence is not confirmed"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Persistence timed out; absence is not confirmed"
+          }
+        },
+        "tags": [
+          "Lifecycle"
+        ]
+      },
+      "get": {
+        "operationId": "read_forward",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Forward"
+                }
+              }
+            },
+            "description": "Registration or readable deletion completion record"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "missing": {
+                    "value": {
+                      "data": null,
+                      "error": "Registration not found"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Confirmed absent"
+          }
+        },
+        "tags": [
+          "Lifecycle"
+        ]
+      },
+      "put": {
+        "description": "Explicit replacement. Name and namespaceBase cannot change. Failed discovery preserves the previous configuration and capabilities. Runtime state is not client-controlled.",
+        "operationId": "replace_forward",
+        "parameters": [
+          {
+            "description": "Existing immutable forward name",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForwardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_Forward"
+                }
+              }
+            },
+            "description": "Replacement persisted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Invalid replacement"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Confirmed absent"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Immutable base mismatch or lifecycle conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Persistence failed"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Discovery failed; previous state retained"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response_String"
+                }
+              }
+            },
+            "description": "Persistence timed out"
+          }
+        },
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    }
+  }
+}

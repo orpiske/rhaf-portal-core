@@ -14,13 +14,15 @@ WORKDIR /src
 # Cache dependencies before copying application sources.
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY xtask/Cargo.toml xtask/Cargo.toml
+# The contract crate generates OpenAPI during compilation.
+COPY crates/rhaf-api crates/rhaf-api
 RUN mkdir -p src xtask/src \
     && printf 'fn main() {}\n' > src/main.rs \
     && printf 'fn main() {}\n' > xtask/src/main.rs
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p rhaf-portal-core
+    cargo build --release --locked -p rhaf-portal-core -p rhaf-api
 
 COPY src src
 # Ensure Cargo rebuilds the real sources after the cache build.
@@ -28,7 +30,7 @@ RUN touch src/main.rs
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p rhaf-portal-core \
+    cargo build --release --locked -p rhaf-portal-core -p rhaf-api \
     && cp target/release/rhaf-portal-core /usr/local/bin/rhaf-portal-core
 
 FROM registry.access.redhat.com/ubi10/ubi-minimal:10.1

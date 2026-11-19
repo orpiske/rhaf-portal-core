@@ -4394,6 +4394,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rhaf-api"
+version = "0.1.0-dev"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "utoipa",
+]
+
+[[package]]
 name = "rhaf-portal-core"
 version = "0.1.0-dev"
 dependencies = [

@@ -67,6 +67,14 @@ jobs:
         run: cargo build --workspace --locked --verbose
       - name: Test
         run: cargo test --workspace --locked --verbose
+      - name: Check OpenAPI snapshot
+        run: cargo openapi --check crates/rhaf-api/openapi.json
+      - name: Upload OpenAPI snapshot
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: rhaf-openapi-${{ github.sha }}
+          path: crates/rhaf-api/openapi.json
+          if-no-files-found: error
       - name: Set up Java for the controlled MCP fixture
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
         with:
