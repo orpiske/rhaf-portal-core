@@ -33,6 +33,14 @@ PR CI checks this requirement. Run the same Rust check locally:
 cargo check-workspace-lints
 ```
 
+The `rhaf-api` crate generates RHAF OpenAPI during compilation. See
+[API contracts](docs/api-contracts.md) for schema snapshots, generation commands,
+and the separate pinned Wanaku schema source. Check schema drift with:
+
+```bash
+cargo openapi --check crates/rhaf-api/openapi.json
+```
+
 ## Run the embedded runtime
 
 Core uses Wanaku's public `App::build` API and its Praxis/Pingora pipeline.
