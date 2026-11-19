@@ -17,8 +17,9 @@ use wanaku_types::governance::{GovernanceConfig, GovernanceConfigError};
 use wanaku_types::persistence::PersistenceBackend;
 use wanaku_types::registry::ForwardEntry;
 
-const DIAGNOSTIC_SECTIONS: [&str; 12] = [
+const DIAGNOSTIC_SECTIONS: [&str; 13] = [
     "forwards",
+    "namespaces",
     "bindings",
     "llm_connections",
     "typesafe_system_one_connections",
@@ -397,6 +398,10 @@ mod safety_tests {
             ),
             ("bindings: [{id: HIDDEN}]", "bindings[0]"),
             (
+                "namespaces: [{name: portal, HIDDEN: HIDDEN}]",
+                "namespaces[0]",
+            ),
+            (
                 "forwards: [{name: HIDDEN, address: 'http://host/mcp', HIDDEN: HIDDEN}]",
                 "forwards[0]",
             ),
@@ -506,7 +511,22 @@ mod snapshot_tests {
 #[cfg(test)]
 mod configuration_tests {
     use super::load_bootstrap;
-    use anyhow::{Result, bail};
+    use anyhow::{Context, Result, bail};
+
+    #[test]
+    fn bootstrap_preserves_virtual_namespace_memberships() -> Result<()> {
+        let file = tempfile::NamedTempFile::new()?;
+        std::fs::write(
+            file.path(),
+            "namespaces: [{name: backend}, {name: portal, members: [backend]}]",
+        )?;
+        let config = load_bootstrap(Some(file.path()))?.context("bootstrap missing")?;
+        assert_eq!(
+            config["namespaces"][1]["members"][0].as_str(),
+            Some("backend")
+        );
+        Ok(())
+    }
 
     #[test]
     fn evaluator_mapping_rejects_unknown_keys_and_preserves_supported_form() -> Result<()> {

@@ -94,6 +94,21 @@ HTTP forwards remain available.
 Keep credentials out of forward URLs, including query parameters. The pinned
 Wanaku version can write these URLs to logs.
 
+To combine concrete namespaces, add a virtual namespace to the bootstrap file:
+
+```yaml
+namespaces:
+  - name: backend
+  - name: portal
+    members: [backend]
+```
+
+Register forwards in `backend`. Use
+`http://127.0.0.1:8081/virtual-ns/portal/mcp` to access the combined inventory.
+Tool names include the concrete namespace, for example `backend/read_state`.
+Virtual namespace members must be concrete namespaces. Registry persistence
+retains namespace definitions and memberships after a restart.
+
 Send `SIGTERM` to stop Core. Pingora drains requests, then Core flushes registry
 and audit persistence before exit. The default drain timeout is 10 seconds.
 Use `--shutdown-timeout-secs` to change it. `SIGINT` requests Pingora's fast
@@ -131,6 +146,7 @@ executes typed write and read calls through the real MCP listener. It compares
 the results with the fixture's independent call observations. It also checks
 shared tool enablement, disabled UI routes, startup failures, graceful shutdown,
 exclusive data-directory ownership, and registry and audit recovery after restart.
+It checks virtual namespace catalogs, qualified calls, and membership recovery.
 It removes the test forward and stops both processes.
 
 Each run retains logs, fixture observations, configuration, and `result.json`
