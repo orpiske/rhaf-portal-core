@@ -56,6 +56,22 @@
         },
         "type": "object"
       },
+      "ErrorResponse": {
+        "description": "Error responses contain null data and a required error message.",
+        "properties": {
+          "data": {
+            "type": "null"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "error"
+        ],
+        "type": "object"
+      },
       "Forward": {
         "description": "Lifecycle state is independent of upstream reachability and progressive repair.",
         "properties": {
@@ -132,7 +148,7 @@
           "address": {
             "description": "Absolute HTTP(S) MCP endpoint. Do not include embedded credentials.",
             "format": "uri",
-            "pattern": "^https?://[^/?#@]+([/?#].*)?$",
+            "pattern": "^[hH][tT][tT][pP][sS]?://[^/?#@]+([/?#].*)?$",
             "type": "string"
           },
           "credentialBindings": {
@@ -169,6 +185,7 @@
         "type": "object"
       },
       "LifecycleState": {
+        "description": "Keep deleting while cleanup or persistence acknowledgement is pending.\nExpose deleted only after deletion is durably acknowledged.",
         "enum": [
           "registering",
           "active",
@@ -213,7 +230,7 @@
           "url": {
             "description": "Absolute HTTP(S) URL without embedded credentials. Core does not probe it.",
             "format": "uri",
-            "pattern": "^https?://[^/?#@]+([/?#].*)?$",
+            "pattern": "^[hH][tT][tT][pP][sS]?://[^/?#@]+([/?#].*)?$",
             "type": "string"
           }
         },
@@ -224,7 +241,7 @@
         "type": "object"
       },
       "Response_Catalog": {
-        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "description": "Successful responses contain data and a null error.",
         "properties": {
           "data": {
             "properties": {
@@ -253,10 +270,7 @@
             "type": "object"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "null"
           }
         },
         "required": [
@@ -266,7 +280,7 @@
         "type": "object"
       },
       "Response_Forward": {
-        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "description": "Successful responses contain data and a null error.",
         "properties": {
           "data": {
             "description": "Lifecycle state is independent of upstream reachability and progressive repair.",
@@ -338,29 +352,7 @@
             "type": "object"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "data",
-          "error"
-        ],
-        "type": "object"
-      },
-      "Response_String": {
-        "description": "Successful responses contain data and a null error. Errors contain null data.",
-        "properties": {
-          "data": {
-            "type": "string"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "null"
           }
         },
         "required": [
@@ -370,7 +362,7 @@
         "type": "object"
       },
       "Response_Vec_Forward": {
-        "description": "Successful responses contain data and a null error. Errors contain null data.",
+        "description": "Successful responses contain data and a null error.",
         "properties": {
           "data": {
             "items": {
@@ -445,10 +437,7 @@
             "type": "array"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "null"
           }
         },
         "required": [
@@ -472,7 +461,7 @@
   "paths": {
     "/api/rhaf/v1/catalog": {
       "get": {
-        "description": "Read the configured product catalog. Absent or invalid content returns HTTP 200 with an empty products list and a safe message. Catalog reads do not register products, probe URLs, or report availability.",
+        "description": "Read the configured product catalog. Absent or invalid content returns HTTP 200 with an empty products list. An absent catalog can have a null message. An invalid catalog has a safe diagnostic message. Catalog reads do not register products, probe URLs, or report availability.",
         "operationId": "read_catalog",
         "responses": {
           "200": {
@@ -536,7 +525,7 @@
     },
     "/api/rhaf/v1/forwards": {
       "get": {
-        "description": "List lifecycle registrations, including reserved entries with incomplete cleanup. Do not report durable absence before cleanup persistence completes.",
+        "description": "List lifecycle registrations, including reserved entries with incomplete cleanup. Keep entries in deleting state while cleanup or its persistence acknowledgement is pending. Never report deleted or absent before durable completion.",
         "operationId": "list_forwards",
         "responses": {
           "200": {
@@ -640,7 +629,7 @@
                   }
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -650,7 +639,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -660,7 +649,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -670,7 +659,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -755,13 +744,13 @@
                 }
               }
             },
-            "description": "Cleanup pending; registration remains readable"
+            "description": "Cleanup or persistence acknowledgement pending; registration remains readable as deleting"
           },
           "404": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -771,7 +760,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -781,7 +770,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -791,7 +780,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -803,6 +792,7 @@
         ]
       },
       "get": {
+        "description": "Keep the registration readable as deleting while cleanup or its persistence acknowledgement is pending. Never report deleted or absent before durable completion.",
         "operationId": "read_forward",
         "parameters": [
           {
@@ -837,7 +827,7 @@
                   }
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -887,7 +877,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -897,7 +887,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -907,7 +897,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -917,7 +907,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -927,7 +917,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -937,7 +927,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Response_String"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
