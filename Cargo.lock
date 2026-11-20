@@ -4397,6 +4397,7 @@ dependencies = [
 name = "rhaf-api"
 version = "0.1.0-dev"
 dependencies = [
+ "jsonschema",
  "serde",
  "serde_json",
  "tempfile",

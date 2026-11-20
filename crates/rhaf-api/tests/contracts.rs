@@ -82,19 +82,14 @@ fn examples_match_wire_types_and_unknown_availability() -> Result<(), serde_json
             [status]["content"]["application/json"]["examples"][example]["value"]
             .clone();
         let response: Response<Forward> = serde_json::from_value(value)?;
-        assert!(
-            response
-                .data
-                .is_some_and(|forward| forward.available.is_none())
-        );
+        assert!(response.data.available.is_none());
     }
     for example in ["loaded", "absent", "invalid"] {
         let value = document["paths"]["/api/rhaf/v1/catalog"]["get"]["responses"]["200"]["content"]
             ["application/json"]["examples"][example]["value"]
             .clone();
         let response: Response<Catalog> = serde_json::from_value(value)?;
-        assert!(response.error.is_none());
-        assert!(response.data.is_some());
+        assert!(!response.data.products.is_empty() || example != "loaded");
     }
     Ok(())
 }
@@ -106,8 +101,7 @@ fn creation_examples_match_wire_types() -> Result<(), serde_json::Error> {
         let value = document["paths"]["/api/rhaf/v1/forwards"]["post"]["responses"][status]
             ["content"]["application/json"]["examples"][example]["value"].clone();
         let response: Response<Forward> = serde_json::from_value(value)?;
-        assert!(response.error.is_none());
-        assert!(response.data.is_some());
+        assert_eq!(response.data.name, "jolokia");
     }
     Ok(())
 }

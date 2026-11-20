@@ -19,6 +19,7 @@ utoipa = "6"
 
 [dev-dependencies]
 tempfile = "3"
+jsonschema = { version = "0.61", default-features = false }
 
 [lints]
 workspace = true

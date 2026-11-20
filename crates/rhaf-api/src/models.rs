@@ -8,13 +8,27 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// Successful responses contain data and a null error. Errors contain null data.
+/// Successful responses contain data and a null error.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Response<T> {
-    #[schema(required = true, nullable = true)]
-    pub data: Option<T>,
-    #[schema(required = true, nullable = true)]
-    pub error: Option<String>,
+    #[schema(required = true)]
+    pub data: T,
+    #[schema(required = true, schema_with = null_schema)]
+    pub error: (),
+}
+
+/// Error responses contain null data and a required error message.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ErrorResponse {
+    #[schema(required = true, schema_with = null_schema)]
+    pub data: (),
+    pub error: String,
+}
+
+fn null_schema() -> utoipa::openapi::schema::Object {
+    utoipa::openapi::schema::ObjectBuilder::new()
+        .schema_type(utoipa::openapi::schema::Type::Null)
+        .build()
 }
 
 /// Desired configuration only. Runtime state and internal labels are not accepted.
@@ -25,7 +39,10 @@ pub struct ForwardRequest {
     #[schema(min_length = 1)]
     pub name: String,
     /// Absolute HTTP(S) MCP endpoint. Do not include embedded credentials.
-    #[schema(format = "uri", pattern = "^https?://[^/?#@]+([/?#].*)?$")]
+    #[schema(
+        format = "uri",
+        pattern = "^[hH][tT][tT][pP][sS]?://[^/?#@]+([/?#].*)?$"
+    )]
     pub address: String,
     /// Immutable base. Core derives <base>-all and <base>-progressive.
     #[schema(
@@ -53,13 +70,17 @@ pub struct CredentialBindings {
     pub invocation: Option<String>,
 }
 
+/// Keep deleting while cleanup or persistence acknowledgement is pending.
+/// Expose deleted only after deletion is durably acknowledged.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum LifecycleState {
     Registering,
     Active,
     FailedRegistrationCleanup,
+    /// Cleanup or its persistence acknowledgement is pending. Keep reads in this state.
     Deleting,
+    /// Deletion is durably acknowledged. Never expose this state before persistence completes.
     Deleted,
 }
 
@@ -121,6 +142,9 @@ pub struct ProductLink {
     #[schema(min_length = 1)]
     pub label: String,
     /// Absolute HTTP(S) URL without embedded credentials. Core does not probe it.
-    #[schema(format = "uri", pattern = "^https?://[^/?#@]+([/?#].*)?$")]
+    #[schema(
+        format = "uri",
+        pattern = "^[hH][tT][tT][pP][sS]?://[^/?#@]+([/?#].*)?$"
+    )]
     pub url: String,
 }

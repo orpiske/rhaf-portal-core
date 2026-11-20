@@ -42,8 +42,9 @@ development. The schema version follows the workspace package version.
 
 Create uses `POST /api/rhaf/v1/forwards`. Explicit replacement uses
 `PUT /api/rhaf/v1/forwards/{name}`. List, read, and delete use the same collection
-and item paths. The schema defines status codes and response examples for each
-operation.
+and item paths. The schema defines status codes for each operation. Response
+examples cover creation, failed-registration cleanup, pending and completed
+deletion, invalid requests, missing registrations, and catalog states.
 
 Requests contain desired configuration. The name and namespace base are
 immutable. Core derives `<base>-all` and `<base>-progressive` from the base.
@@ -57,6 +58,9 @@ Availability can be true, false, or null. Null means that availability has not
 been determined. Lifecycle state and availability are separate fields.
 
 Deletion returns 202 while cleanup is pending and 200 after durable completion.
+A registration stays in `deleting` state until cleanup persistence is
+acknowledged. The `deleted` state means durable completion. GET and list must
+not report `deleted` or absence before that acknowledgment.
 A 404 response means confirmed absence. Persistence failures and timeouts must
 not report completed deletion or release the reserved base. Failed replacement
 discovery returns 502 and preserves the previous registration.
@@ -80,9 +84,10 @@ to distinguish replacement from deletion followed by recreation.
 ## Product catalog
 
 `GET /api/rhaf/v1/catalog` returns loaded, absent, or invalid status. An absent or
-invalid catalog returns HTTP 200 with an empty product list. Diagnostic messages
-must exclude file contents and credentials. Catalog reads do not register
-products, probe links, or report product availability.
+invalid catalog returns HTTP 200 with an empty product list. An absent catalog
+can have a null message. An invalid catalog includes a safe diagnostic message.
+Diagnostic messages must exclude file contents and credentials. Catalog reads do
+not register products, probe links, or report product availability.
 
 ## Raw Wanaku management APIs
 
