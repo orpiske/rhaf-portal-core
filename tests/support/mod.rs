@@ -1,3 +1,4 @@
+mod governance;
 pub mod http;
 mod process;
 mod scenario;
@@ -56,10 +57,7 @@ impl Harness {
             management,
             mcp,
         };
-        std::fs::write(
-            harness.config(),
-            "governance:\n  default:\n    mode: audit\n    no_match: allow\n    on_failure: allow\n    audit_level: basic\n",
-        )?;
+        std::fs::write(harness.config(), "{}\n")?;
         Ok(harness)
     }
 
@@ -152,6 +150,8 @@ impl Harness {
             "result": "passed", "core_version": version.trim(), "fixture_revision": self.fixture_revision,
             "checks": [
                 "persistent audit write failure produces a nonzero shutdown exit",
+                "shipped governance admits unmatched reads and writes through both filters",
+                "configured deny remains observational and storage degradation permits real calls",
                 "rejected bootstrap preserves existing registry and audit bytes",
                 "malformed OPA diagnostics redact values and preserve deny state",
                 "concurrent data-directory use rejected and lock released on shutdown",

@@ -48,6 +48,9 @@ pub struct Args {
     /// Optional Wanaku bootstrap YAML file.
     #[arg(long, value_name = "PATH")]
     pub wanaku_config: Option<PathBuf>,
+    /// Optional RHAF settings YAML file, separate from Wanaku configuration.
+    #[arg(long, value_name = "PATH")]
+    pub rhaf_config: Option<PathBuf>,
     /// Maximum drain time during orderly shutdown.
     #[arg(long, default_value = "10", value_parser = clap::value_parser!(u64).range(1..=3600))]
     pub shutdown_timeout_secs: u64,
@@ -84,7 +87,10 @@ pub fn bind_management(address: SocketAddr) -> Result<TcpListener> {
 }
 
 pub fn load_bootstrap(path: Option<&Path>) -> Result<Option<serde_yaml::Value>> {
-    let Some(path) = path else { return Ok(None) };
+    let mut defaults = serde_yaml::from_str(include_str!("wanaku-defaults.yaml"))?;
+    let Some(path) = path else {
+        return Ok(Some(defaults));
+    };
     let content = std::fs::read_to_string(path).context("cannot read Wanaku configuration")?;
     let mut config: serde_yaml::Value =
         serde_yaml::from_str(&content).map_err(|error| match error.location() {
@@ -102,7 +108,24 @@ pub fn load_bootstrap(path: Option<&Path>) -> Result<Option<serde_yaml::Value>> 
     validate_unknown_keys(&config)?;
     validate_bootstrap(&config)?;
     crate::feature_config::redact_malformed_sections(&mut config);
-    Ok(Some(config))
+    merge_settings(&mut defaults, config);
+    Ok(Some(defaults))
+}
+
+fn merge_settings(defaults: &mut serde_yaml::Value, configured: serde_yaml::Value) {
+    match (defaults, configured) {
+        (serde_yaml::Value::Mapping(defaults), serde_yaml::Value::Mapping(configured)) => {
+            for (key, value) in configured {
+                match defaults.get_mut(&key) {
+                    Some(default) => merge_settings(default, value),
+                    None => {
+                        defaults.insert(key, value);
+                    }
+                }
+            }
+        }
+        (default, configured) => *default = configured,
+    }
 }
 
 fn validate_unknown_keys(config: &serde_yaml::Value) -> Result<()> {
@@ -207,8 +230,10 @@ fn validate_forward(forward: &ForwardEntry) -> Result<()> {
 }
 
 pub fn governance(root: Option<&serde_yaml::Value>) -> Result<GovernanceConfig> {
+    let baseline: serde_yaml::Value = serde_yaml::from_str(include_str!("wanaku-defaults.yaml"))?;
     let governance = root
         .and_then(|value| value.get("governance"))
+        .or_else(|| baseline.get("governance"))
         .map(|value| serde_yaml::from_value::<GovernanceConfig>(value.clone()))
         .transpose()
         .map_err(|_| {
@@ -453,6 +478,7 @@ mod resource_tests {
             management_listen: management.local_addr()?,
             data_dir: "unused".into(),
             wanaku_config: None,
+            rhaf_config: None,
             shutdown_timeout_secs: 1,
         };
         drop((mcp, management));
@@ -504,6 +530,74 @@ mod snapshot_tests {
             nix::unistd::mkfifo(&fifo, nix::sys::stat::Mode::S_IRUSR)?;
             assert!(super::validate_snapshot_path(&fifo).is_err());
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod baseline_tests {
+    use super::load_bootstrap;
+    use anyhow::{Context, Result};
+
+    #[test]
+    fn shipped_baseline_is_open_audit_with_native_redaction() -> Result<()> {
+        use wanaku_types::governance::{
+            AuditLevel, EnforcementMode, FailureBehavior, NoMatchBehavior,
+        };
+
+        let config = load_bootstrap(None)?.context("baseline missing")?;
+        super::validate_unknown_keys(&config)?;
+        let governance = super::governance(Some(&config))?;
+        assert!(governance.namespaces.is_empty());
+        assert_eq!(governance.default.mode, EnforcementMode::Audit);
+        assert_eq!(governance.default.no_match, NoMatchBehavior::Allow);
+        assert_eq!(governance.default.on_failure, FailureBehavior::Allow);
+        assert_eq!(governance.default.audit_level, AuditLevel::Basic);
+        assert_eq!(super::governance(None)?, governance);
+        let audit: wanaku_feature_audit::AuditConfig =
+            serde_yaml::from_value(config["audit"].clone())?;
+        assert!(!audit.capture_payloads);
+        assert!(!audit.ingestion_enabled);
+        assert!(audit.include_default_redaction_rules);
+        Ok(())
+    }
+
+    #[test]
+    fn partial_overrides_preserve_baseline_and_keep_rhaf_keys_separate() -> Result<()> {
+        let file = tempfile::NamedTempFile::new()?;
+        std::fs::write(
+            file.path(),
+            "governance: {default: {no_match: deny}}\naudit: {max_records: 5}",
+        )?;
+        let config = load_bootstrap(Some(file.path()))?.context("bootstrap missing")?;
+        let governance = super::governance(Some(&config))?;
+        assert_eq!(
+            governance.default.mode,
+            wanaku_types::governance::EnforcementMode::Audit
+        );
+        assert_eq!(
+            governance.default.no_match,
+            wanaku_types::governance::NoMatchBehavior::Deny
+        );
+        assert_eq!(config["audit"]["max_records"].as_u64(), Some(5));
+        assert_eq!(config["audit"]["capture_payloads"].as_bool(), Some(false));
+        std::fs::write(file.path(), "search: {max_results: 5}")?;
+        assert!(load_bootstrap(Some(file.path())).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn accepts_environment_backed_https_bindings() -> Result<()> {
+        let file = tempfile::NamedTempFile::new()?;
+        std::fs::write(
+            file.path(),
+            "bindings:\n- id: fixture-token\n  forwardId: fixture\n  origin: https://fixture.example:443\n  mechanism: {type: bearer}\n  secretRefs: [env:RHAF_FIXTURE_TOKEN]\n  allowedPurposes: [discovery, invocation]\n",
+        )?;
+        let config = load_bootstrap(Some(file.path()))?.context("bootstrap missing")?;
+        assert_eq!(
+            config["bindings"][0]["secretRefs"][0].as_str(),
+            Some("env:RHAF_FIXTURE_TOKEN")
+        );
         Ok(())
     }
 }

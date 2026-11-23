@@ -74,10 +74,7 @@ Startup rejects unreadable or corrupt state, invalid bootstrap configuration,
 and unavailable listener addresses.
 Rejected bootstrap configuration does not publish registry or audit changes.
 
-Pass `--wanaku-config PATH` to load a Wanaku bootstrap YAML file. No file is
-loaded when this option is absent. The upstream governance defaults deny
-unmatched tool calls. To exercise the conventional runtime locally, create a
-test configuration:
+Core embeds this governance baseline:
 
 ```yaml
 governance:
@@ -86,17 +83,50 @@ governance:
     no_match: allow
     on_failure: allow
     audit_level: basic
+audit:
+  capture_payloads: false
+  include_default_redaction_rules: true
+  ingestion_enabled: false
 ```
 
-Start Core with that file:
+The action-policy and evaluator filters stay in the pipeline. Valid unmatched
+read and write calls pass both filters. Configured denials produce audit
+observations and do not block admission in audit mode. The baseline has no
+namespace overrides. Basic audit does not require an external LLM evaluator.
+Protocol validation, credential checks, target availability, and backend
+permissions still apply.
+
+Native audit remains active and uses the persistent audit store. Payload
+capture and external audit ingestion are disabled. Built-in redaction is
+enabled. Storage failures produce diagnostics and do not block tool admission.
+Audit does not establish private agent reasoning, verified user identity, or
+lossless retention.
+
+Pass `--wanaku-config PATH` to override the embedded Wanaku settings. Core
+merges mapping fields and replaces scalar and list values. Omitted fields
+keep their baseline values. The file must contain supported Wanaku keys.
+Upstream `WANAKU_AUDIT_*` environment controls also apply.
+
+Pass `--rhaf-config PATH` to load RHAF settings from a separate YAML file:
+
+```yaml
+search:
+  max_results: 20
+```
+
+`search.max_results` must be a positive integer. The default is `20`. This
+setting reserves the result limit for the progressive search implementation.
+Core rejects unsupported RHAF keys. Do not put RHAF keys in the Wanaku file.
+
+Start Core with both configuration files:
 
 ```bash
-cargo run --locked -- --wanaku-config /path/to/wanaku.yaml --data-dir ./data
+cargo run --locked -- --rhaf-config /path/to/rhaf.yaml --wanaku-config /path/to/wanaku.yaml --data-dir ./data
 ```
 
-The action-policy and evaluator filters stay in the pipeline. RHAF configuration
-and the shipped audit-only baseline belong to issue #6. Credential bindings use
-Wanaku's environment resolver and the shared broker.
+Credential bindings use Wanaku's environment resolver and the shared broker.
+Use `env:VARIABLE_NAME` in a binding's `secretRefs` list. Set the variable in
+the Core process environment. Keep secret values out of configuration files.
 Core resolves brokered credentials only for HTTPS destinations. Credential-free
 HTTP forwards remain available.
 Keep credentials out of forward URLs, including query parameters. The pinned

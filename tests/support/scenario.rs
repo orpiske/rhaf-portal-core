@@ -37,7 +37,7 @@ impl Harness {
         })
     }
 
-    async fn register_forward(&self) -> Result<()> {
+    pub(super) async fn register_forward(&self) -> Result<()> {
         let body = json!({"name": "controlled-fixture", "address": self.fixture_url("/mcp")});
         let reply = self
             .http
@@ -168,7 +168,7 @@ impl Harness {
         Ok(())
     }
 
-    async fn audit_events(&self) -> Result<Vec<Value>> {
+    pub(super) async fn audit_events(&self) -> Result<Vec<Value>> {
         let reply = self
             .http
             .request(
@@ -201,6 +201,7 @@ impl Harness {
             targets == BTreeSet::from(["read_state", "set_state"]),
             "tool-call audit events missing before shutdown"
         );
+        verify_baseline_observations(&relevant)?;
         let ids = event_ids(relevant.into_iter())?;
         self.save_json("expected-audit-ids.json", &ids)?;
         Ok(ids)
@@ -313,6 +314,26 @@ impl Harness {
         self.verify_virtual_catalog().await?;
         Ok(())
     }
+}
+
+fn verify_baseline_observations(events: &[&Value]) -> Result<()> {
+    for target in ["read_state", "set_state"] {
+        for filter in ["wanaku_action_policy", "wanaku_evaluator"] {
+            ensure!(
+                events
+                    .iter()
+                    .any(|event| event["target"] == target && event["filter"] == filter),
+                "missing {filter} observation for unmatched {target}"
+            );
+        }
+    }
+    ensure!(
+        events.iter().all(|event| {
+            event.get("payload").is_none() && event["redaction"]["payload_captured"] == false
+        }),
+        "default audit captured tool payloads"
+    );
+    Ok(())
 }
 
 fn verify_observed_arguments(observations: &[Value], arguments: &Value) -> Result<()> {

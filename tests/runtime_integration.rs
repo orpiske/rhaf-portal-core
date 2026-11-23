@@ -26,6 +26,9 @@ async fn conventional_runtime_against_controlled_mcp_fixture() -> Result<()> {
     let second = harness.start_core("core-restart.log").await?;
     harness.verify_restart(&expected).await?;
     second.stop().await?;
+    harness
+        .verify_observational_deny_and_storage_failure(&expected)
+        .await?;
     fixture.stop().await?;
     harness.record_success()
 }
