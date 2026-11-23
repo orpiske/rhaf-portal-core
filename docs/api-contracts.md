@@ -96,7 +96,7 @@ used by the UI are `/api/v1/forwards` and `/api/v1/forwards/{name}`. Their sourc
 the pinned Wanaku
 [`server/src/openapi.rs`](https://github.com/wanaku-ai/wanaku/blob/bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b/server/src/openapi.rs).
 Wanaku publishes its consumer snapshot at
-[`ui/admin/openapi.json`](https://github.com/wanaku-ai/wanaku/blob/bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b/ui/admin/openapi.json).
+[`ui/admin/openapi.json`](https://raw.githubusercontent.com/wanaku-ai/wanaku/bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b/ui/admin/openapi.json).
 Use that revision when consuming the raw APIs. Update these references when the
 workspace Wanaku pin changes.
 
