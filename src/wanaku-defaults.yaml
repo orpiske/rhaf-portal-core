@@ -1,0 +1,10 @@
+governance:
+  default:
+    mode: audit
+    no_match: allow
+    on_failure: allow
+    audit_level: basic
+audit:
+  capture_payloads: false
+  include_default_redaction_rules: true
+  ingestion_enabled: false

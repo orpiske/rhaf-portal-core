@@ -28,7 +28,7 @@ publish = false
 anyhow.workspace = true
 async-trait = "0.1.92"
 clap.workspace = true
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 pingora-core = { version = "0.11.0", package = "quixotic-plecostomus-core" }
 praxis-core = { version = "0.7.5", package = "praxis-proxy-core" }
 praxis-protocol = { version = "0.7.5", package = "praxis-proxy-protocol" }
