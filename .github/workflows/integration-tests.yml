@@ -1,0 +1,58 @@
+name: Integration Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  runtime:
+    name: Verify MCP forwarding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          toolchain: '1.96.0'
+      - name: Cache Cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Build Core
+        run: cargo build --workspace --locked --verbose
+      - name: Set up Java for the controlled MCP fixture
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build the controlled MCP fixture
+        id: fixture
+        run: |
+          git clone https://github.com/rhaf-ai/rhaf-portal-tests.git "$RUNNER_TEMP/rhaf-portal-tests"
+          git -C "$RUNNER_TEMP/rhaf-portal-tests" checkout 2fa44efdbc42e01384d0bef5776b703cdb9956ab
+          mvn -B -f "$RUNNER_TEMP/rhaf-portal-tests/pom.xml" -pl fixtures/test-mcp-server -am package -DskipTests
+          printf 'revision=%s\n' "$(git -C "$RUNNER_TEMP/rhaf-portal-tests" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Verify the embedded runtime
+        env:
+          RHAF_MCP_FIXTURE_JAR: ${{ runner.temp }}/rhaf-portal-tests/fixtures/test-mcp-server/target/quarkus-app/quarkus-run.jar
+          RHAF_MCP_FIXTURE_REVISION: ${{ steps.fixture.outputs.revision }}
+        run: cargo test --locked --test runtime_integration -- --ignored --nocapture
+      - name: Upload runtime integration evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: runtime-integration-evidence
+          path: target/runtime-evidence
+          if-no-files-found: ignore
