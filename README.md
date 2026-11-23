@@ -161,8 +161,9 @@ or healthy-forward catalog refresh.
 
 ## Verify real MCP forwarding
 
-Use Java 21 or later and Maven 3.9 or later. Build Core and the controlled HTTP
-MCP fixture:
+Use Java 21 or later and Maven 3.9 or later for the controlled HTTP MCP fixture.
+Normal Rust builds and tests do not require Java or Maven. Build Core and the
+fixture:
 
 ```bash
 cargo build --workspace --locked
@@ -188,8 +189,10 @@ It checks virtual namespace catalogs, qualified calls, and membership recovery.
 It removes the test forward and stops both processes.
 
 Each run retains logs, fixture observations, configuration, and `result.json`
-under `target/runtime-evidence/run-*`. PR CI runs the same check and uploads
-the evidence as `runtime-integration-evidence`.
+under `target/runtime-evidence/run-*`. The dedicated `Integration Tests` reusable
+workflow runs the same check after the PR build, lint, and container jobs succeed.
+It uploads the evidence as `runtime-integration-evidence`. Only the integration
+workflow uses Java and Maven.
 
 ## Container image
 
@@ -237,7 +240,8 @@ cargo build-image-manifest --tag REGISTRY/GROUP/rhaf-portal-core:TAG
 
 ## CI and releases
 
-- `pr-build`: build, unit tests, real MCP integration, formatting, Clippy, and container builds.
+- `pr-build`: build, unit tests, formatting, Clippy, and container builds.
+- `integration-tests`: run the controlled MCP check after the PR build, lint, and container jobs succeed.
 - `main-build`: Linux x86_64 and ARM64 builds and container publication.
 - `lychee-links`: Markdown links and formatting.
 - `early-access`: manually publish four-platform archives and rolling prereleases.

@@ -75,30 +75,6 @@ jobs:
           name: rhaf-openapi-${{ github.sha }}
           path: crates/rhaf-api/openapi.json
           if-no-files-found: error
-      - name: Set up Java for the controlled MCP fixture
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Build the controlled MCP fixture
-        id: fixture
-        run: |
-          git clone https://github.com/rhaf-ai/rhaf-portal-tests.git "$RUNNER_TEMP/rhaf-portal-tests"
-          git -C "$RUNNER_TEMP/rhaf-portal-tests" checkout 2fa44efdbc42e01384d0bef5776b703cdb9956ab
-          mvn -B -f "$RUNNER_TEMP/rhaf-portal-tests/pom.xml" -pl fixtures/test-mcp-server -am package -DskipTests
-          printf 'revision=%s\n' "$(git -C "$RUNNER_TEMP/rhaf-portal-tests" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - name: Verify the embedded runtime
-        env:
-          RHAF_MCP_FIXTURE_JAR: ${{ runner.temp }}/rhaf-portal-tests/fixtures/test-mcp-server/target/quarkus-app/quarkus-run.jar
-          RHAF_MCP_FIXTURE_REVISION: ${{ steps.fixture.outputs.revision }}
-        run: cargo test --locked --test runtime_integration -- --ignored --nocapture
-      - name: Upload runtime integration evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: runtime-integration-evidence
-          path: target/runtime-evidence
-          if-no-files-found: ignore
 
   container:
     strategy:
@@ -112,3 +88,7 @@ jobs:
         run: docker build -f Containerfile -t rhaf-portal-core:pr .
       - name: Run image executable
         run: docker run --rm rhaf-portal-core:pr --version
+
+  integration-tests:
+    needs: [clippy, build, container]
+    uses: ./.github/workflows/integration-tests.yml
