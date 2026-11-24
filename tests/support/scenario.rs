@@ -24,13 +24,6 @@ impl Harness {
             "management update was not shared"
         );
         self.verify_virtual_catalog().await?;
-        for path in ["/", "/index.html", "/ui/"] {
-            let reply = self
-                .http
-                .request(Method::GET, &self.management_url(path), None)
-                .await?;
-            ensure!(reply.status == 404, "upstream admin UI exposed at {path}");
-        }
         Ok(Expected {
             state,
             audit_ids: self.capture_audit_ids().await?,

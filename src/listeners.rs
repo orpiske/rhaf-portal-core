@@ -6,8 +6,10 @@ use pingora_core::server::{ListenFds, ShutdownWatch};
 use pingora_core::services::Service;
 use wanaku_server::management::WanakuManagementService;
 
+use crate::management::ManagementService;
+
 pub struct BoundManagement {
-    service: pingora_core::services::listening::Service<WanakuManagementService>,
+    service: pingora_core::services::listening::Service<ManagementService>,
     listener: Option<TcpListener>,
     address: String,
 }
@@ -20,7 +22,7 @@ impl BoundManagement {
         let address = listener.local_addr()?.to_string();
         let mut service = pingora_core::services::listening::Service::new(
             "rhaf-management".to_owned(),
-            management,
+            ManagementService::new(management),
         );
         service.add_tcp(&address);
         Ok(Self {

@@ -28,6 +28,8 @@ publish = false
 anyhow.workspace = true
 async-trait = "0.1.92"
 clap.workspace = true
+http = "1"
+rhaf-api = { path = "crates/rhaf-api" }
 serde = { version = "1", features = ["derive"] }
 pingora-core = { version = "0.11.0", package = "quixotic-plecostomus-core" }
 praxis-core = { version = "0.7.5", package = "praxis-proxy-core" }
