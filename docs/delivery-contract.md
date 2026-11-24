@@ -151,17 +151,48 @@ commands, and retained results with each qualification run. Re-run affected
 gates after dependency changes. Do not release with an unresolved defect that
 violates ownership, persistence, dispatch, or credential guarantees.
 
+### Initial compatibility targets
+
+The initial platform targets are OpenShift 4.22 and OpenShift 5.0. The 5.0
+target does not establish compatibility with every OpenShift 5.x release.
+For optional OLS-enabled deployments, qualify OpenShift Lightspeed 2.0 on each
+target. OLS has its own version lifecycle. The
+[Red Hat OpenShift Operator life cycle policy](https://access.redhat.com/support/policy/updates/openshift_operators),
+checked on 2026-11-24, lists OLS 2.0 support for OpenShift 4.22 and 5.0.
+That upstream support statement does not establish RHAF compatibility.
+Record exact platform patches, OLS ClusterServiceVersion (CSV), and image digests
+at candidate qualification. Keep OLS-disabled support separate from OLS-enabled
+support.
+
+Bob, Jolokia endpoints, and other forwards use a protocol and capability
+contract. They must comply with the MCP versions, transports, and capabilities
+that the candidate Core supports. Do not add product-version allowlists or
+arbitrary product-version gates. Record the concrete product and client versions
+in qualification evidence so another contributor can reproduce the check.
+Protocol compliance does not replace real forwarding, client, credential, or
+dispatch checks.
+
+The portal browser targets are the stable Chrome, Firefox, Edge, and Safari
+releases available at candidate qualification. Use standard interoperable web
+features and perform the necessary compatibility checks across those browsers.
+Record exact browser builds and operating systems with the results.
+
+These are qualification targets, not completed support claims.
+[Core #31](https://github.com/rhaf-ai/rhaf-portal-core/issues/31) must publish the
+tested matrix, Core-supported MCP versions and transports, and explicit evidence
+gaps before release. Do not count an untested target as a pass.
+
 ### Open decisions and accountable gates
 
-The repository does not yet contain an approved product/client version matrix
-or a human's acceptance of release ownership. The following gates keep those
-unknowns explicit; they do not imply approval by the named maintainer.
+The compatibility targets above still require candidate-specific evidence.
+Human release ownership still requires explicit acceptance. The following gates
+keep pending work accountable; they do not imply approval by the named maintainer.
 
 | Decision or deliverable | Accountable owner | Gate |
 | --- | --- | --- |
 | Adoption schema and guarded durable implementation | Core maintainers; coordination: @orpiske | Core #27 and operator #11 must agree on the generated contract before operator integration. Core #28 must exercise it before recovery support. |
 | Shared publication, WASM hosting, and healthy refresh | Core maintainers; coordination: @orpiske | Core #30 must record upstream regression evidence and the consumed pin before dependent feature qualification. |
-| Initial OpenShift, OLS, Bob, Jolokia, and browser versions | Product maintainers; decision coordination: @orpiske | Record exact proposed versions before client qualification. Publish tested versions and explicit evidence gaps in [Core #31](https://github.com/rhaf-ai/rhaf-portal-core/issues/31) before support claims or release. No initial supported versions are confirmed here. |
+| Compatibility qualification | Product maintainers; coordination: @orpiske | Qualify the initial targets above. Core #31 must publish exact tested configurations, protocol coverage, and explicit evidence gaps before support claims or release. |
 | Human release owner | Project maintainer @orpiske must name the owner and obtain acceptance | Record the person's name and acceptance in [Core #33](https://github.com/rhaf-ai/rhaf-portal-core/issues/33) before candidate assessment. That person must record the final release decision. |
 | Cross-repository recovery guidance and evidence | Core and operator maintainers; coordination: @orpiske | Core #28 and operator #11 must reconcile the relocation instructions and retain recovery evidence before documentation claims complete recovery. |
 
