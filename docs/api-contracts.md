@@ -81,6 +81,11 @@ The maintainer approved this decision on 2026-11-19 for the identity contract
 required by issues #3 and #8. Operators and other consumers can use this identity
 to distinguish replacement from deletion followed by recreation.
 
+The [Core and operator delivery contract](delivery-contract.md) defines retained
+ownership, metadata-only adoption, and the recovery integration gates. Adoption
+requires its own schema before implementation; the current schema does not
+declare an adoption operation.
+
 ## Product catalog
 
 `GET /api/rhaf/v1/catalog` returns loaded, absent, or invalid status. An absent or

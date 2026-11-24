@@ -2,6 +2,10 @@
 
 RHAF Portal Core is the Rust runtime for RHAF Portal. The runtime builds on the [Wanaku](https://github.com/wanaku-ai/wanaku) project.
 
+See the [Core and operator delivery contract](docs/delivery-contract.md) for
+registration ownership, retained-data recovery, implementation boundaries, and
+release gates.
+
 ## Build and run
 
 Rust 1.96.0 is pinned in `rust-toolchain.toml`. Install Rust through rustup, then run:
