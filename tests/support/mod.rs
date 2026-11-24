@@ -168,6 +168,7 @@ impl Harness {
                 "invalid configuration and occupied listener rejected before startup",
                 "two stateless client handshakes and ping",
                 "shared management and MCP registry before and after restart",
+                "manual forward refresh preserves disabled tool state",
                 "virtual namespace qualified catalog, dispatch, updates, and restart recovery",
                 "registry state and exact tool-call audit IDs survive SIGTERM shutdown",
                 "forward recovery without replay",

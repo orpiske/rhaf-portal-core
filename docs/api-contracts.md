@@ -99,9 +99,9 @@ not register products, probe links, or report product availability.
 Keep the upstream schema separate from the RHAF schema. The raw forward routes
 used by the UI are `/api/v1/forwards` and `/api/v1/forwards/{name}`. Their source is
 the pinned Wanaku
-[`server/src/openapi.rs`](https://github.com/wanaku-ai/wanaku/blob/7af5411b9ede7b63fb1c3a664c3570d51ec67354/server/src/openapi.rs).
+[`server/src/openapi.rs`](https://github.com/wanaku-ai/wanaku/blob/1a22a9e692e2f50aed56913000be3def38a7ca2c/server/src/openapi.rs).
 Wanaku publishes its consumer snapshot at
-[`ui/admin/openapi.json`](https://raw.githubusercontent.com/wanaku-ai/wanaku/7af5411b9ede7b63fb1c3a664c3570d51ec67354/ui/admin/openapi.json).
+[`ui/admin/openapi.json`](https://raw.githubusercontent.com/wanaku-ai/wanaku/1a22a9e692e2f50aed56913000be3def38a7ca2c/ui/admin/openapi.json).
 Use that revision when consuming the raw APIs. Update these references when the
 workspace Wanaku pin changes.
 
