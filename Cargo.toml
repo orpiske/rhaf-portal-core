@@ -37,11 +37,11 @@ serde_yaml = { package = "yaml_serde", version = "0.10.4" }
 tempfile = "3"
 tracing = "0.1.44"
 # All Wanaku crates use the same pinned upstream revision. The admin UI is disabled.
-wanaku-server = { git = "https://github.com/wanaku-ai/wanaku", rev = "c56e75ca50e65c3b0e689b9a96a1802fb1da15be", default-features = false }
-wanaku-infra = { git = "https://github.com/wanaku-ai/wanaku", rev = "c56e75ca50e65c3b0e689b9a96a1802fb1da15be" }
-wanaku-types = { git = "https://github.com/wanaku-ai/wanaku", rev = "c56e75ca50e65c3b0e689b9a96a1802fb1da15be" }
-wanaku-feature-audit = { git = "https://github.com/wanaku-ai/wanaku", rev = "c56e75ca50e65c3b0e689b9a96a1802fb1da15be" }
-wanaku-feature-evaluator = { git = "https://github.com/wanaku-ai/wanaku", rev = "c56e75ca50e65c3b0e689b9a96a1802fb1da15be" }
+wanaku-server = { git = "https://github.com/wanaku-ai/wanaku", rev = "7af5411b9ede7b63fb1c3a664c3570d51ec67354", default-features = false }
+wanaku-infra = { git = "https://github.com/wanaku-ai/wanaku", rev = "7af5411b9ede7b63fb1c3a664c3570d51ec67354" }
+wanaku-types = { git = "https://github.com/wanaku-ai/wanaku", rev = "7af5411b9ede7b63fb1c3a664c3570d51ec67354" }
+wanaku-feature-audit = { git = "https://github.com/wanaku-ai/wanaku", rev = "7af5411b9ede7b63fb1c3a664c3570d51ec67354" }
+wanaku-feature-evaluator = { git = "https://github.com/wanaku-ai/wanaku", rev = "7af5411b9ede7b63fb1c3a664c3570d51ec67354" }
 
 [dev-dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
