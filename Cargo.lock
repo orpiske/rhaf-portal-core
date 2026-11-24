@@ -5941,7 +5941,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-action-policy"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5961,7 +5961,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-audit"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "form_urlencoded",
@@ -5978,7 +5978,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-evaluator"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6002,7 +6002,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-intercept"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6018,7 +6018,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-mcp-metadata"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6036,7 +6036,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-metrics"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "http",
@@ -6050,7 +6050,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-plugins"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "http",
@@ -6071,7 +6071,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-simulation"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6092,7 +6092,7 @@ dependencies = [
 [[package]]
 name = "wanaku-feature-tool-handler"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "http",
@@ -6114,7 +6114,7 @@ dependencies = [
 [[package]]
 name = "wanaku-filters"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6132,7 +6132,7 @@ dependencies = [
 [[package]]
 name = "wanaku-infra"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -6155,7 +6155,7 @@ dependencies = [
 [[package]]
 name = "wanaku-server"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6195,7 +6195,7 @@ dependencies = [
 [[package]]
 name = "wanaku-types"
 version = "0.4.0-dev"
-source = "git+https://github.com/wanaku-ai/wanaku?rev=7af5411b9ede7b63fb1c3a664c3570d51ec67354#7af5411b9ede7b63fb1c3a664c3570d51ec67354"
+source = "git+https://github.com/wanaku-ai/wanaku?rev=1a22a9e692e2f50aed56913000be3def38a7ca2c#1a22a9e692e2f50aed56913000be3def38a7ca2c"
 dependencies = [
  "async-trait",
  "hex",

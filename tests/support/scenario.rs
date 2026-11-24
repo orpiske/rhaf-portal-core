@@ -19,15 +19,38 @@ impl Harness {
         self.verify_shared_registry().await?;
         let state = self.verify_real_calls().await?;
         self.set_read_enabled(false).await?;
-        ensure!(
-            self.http.tools(&self.mcp_url()).await? == BTreeSet::from(["set_state".to_owned()]),
-            "management update was not shared"
-        );
+        self.verify_refresh_preserves_enablement().await?;
         self.verify_virtual_catalog().await?;
         Ok(Expected {
             state,
             audit_ids: self.capture_audit_ids().await?,
         })
+    }
+
+    async fn verify_refresh_preserves_enablement(&self) -> Result<()> {
+        let tools = self.http.tools(&self.mcp_url()).await?;
+        ensure!(
+            tools == BTreeSet::from(["set_state".to_owned()]),
+            "management update was not shared"
+        );
+        let refresh = self
+            .http
+            .request(
+                Method::POST,
+                &self.management_url("/api/v1/forwards/controlled-fixture/refreshes"),
+                None,
+            )
+            .await?;
+        ensure!(
+            refresh.status == 200 && refresh.body["data"]["tools_discovered"] == 2,
+            "forward refresh failed: {}",
+            refresh.body
+        );
+        ensure!(
+            self.http.tools(&self.mcp_url()).await? == tools,
+            "forward refresh changed tool enablement"
+        );
+        Ok(())
     }
 
     pub(super) async fn register_forward(&self) -> Result<()> {
