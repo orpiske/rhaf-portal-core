@@ -31,13 +31,17 @@ clap.workspace = true
 http = "1"
 rhaf-api = { path = "crates/rhaf-api" }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 pingora-core = { version = "0.11.0", package = "quixotic-plecostomus-core" }
 praxis-core = { version = "0.7.5", package = "praxis-proxy-core" }
 praxis-protocol = { version = "0.7.5", package = "praxis-proxy-protocol" }
 praxis-tls = { version = "0.7.5", package = "praxis-proxy-tls" }
 serde_yaml = { package = "yaml_serde", version = "0.10.4" }
 tempfile = "3"
+thiserror = "2"
 tracing = "0.1.44"
+uuid = { version = "1", features = ["v4"] }
+tokio = { version = "1", features = ["macros", "sync", "time"] }
 # All Wanaku crates use the same pinned revision. The admin UI is disabled.
 wanaku-server = { git = "https://github.com/wanaku-ai/wanaku", rev = "1a22a9e692e2f50aed56913000be3def38a7ca2c", default-features = false }
 wanaku-infra = { git = "https://github.com/wanaku-ai/wanaku", rev = "1a22a9e692e2f50aed56913000be3def38a7ca2c" }
@@ -47,7 +51,6 @@ wanaku-feature-evaluator = { git = "https://github.com/wanaku-ai/wanaku", rev = 
 
 [dev-dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
-serde_json = "1"
 nix = { version = "0.31", default-features = false, features = ["signal", "process", "fs"] }
 toml = "1"
 tokio = { version = "1", features = ["macros", "rt", "time"] }

@@ -6,6 +6,7 @@ mod feature_config;
 mod listeners;
 mod management;
 mod persistence;
+mod reconnect;
 mod runtime;
 mod startup;
 
@@ -42,6 +43,7 @@ fn run(args: &startup::Args, pipeline: &praxis_core::config::Config) -> anyhow::
     let _data_lock = startup::lock_data_directory(&args.data_dir)?;
     let management = startup::bind_management(args.management_listen)?;
     let (resources, persistence) = startup::resources(&args.data_dir)?;
+    startup::validate_lifecycle_bootstrap(bootstrap.as_ref(), persistence.as_ref())?;
     let app = wanaku_server::app::App::build(
         &wanaku_server::app::AppSettings {
             pipeline,
