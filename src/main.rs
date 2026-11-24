@@ -4,6 +4,7 @@ mod config;
 mod credentials;
 mod feature_config;
 mod listeners;
+mod management;
 mod persistence;
 mod runtime;
 mod startup;

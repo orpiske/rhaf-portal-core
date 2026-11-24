@@ -1,5 +1,6 @@
 mod governance;
 pub mod http;
+mod management;
 mod process;
 mod scenario;
 mod startup;
@@ -45,6 +46,14 @@ impl Harness {
             "fixture JAR missing: {}",
             fixture_jar.display()
         );
+        Self::with_fixture(fixture_jar, fixture_revision)
+    }
+
+    pub fn management_only() -> Result<Self> {
+        Self::with_fixture(PathBuf::new(), String::new())
+    }
+
+    fn with_fixture(fixture_jar: PathBuf, fixture_revision: String) -> Result<Self> {
         let evidence = evidence_directory()?;
         let [fixture, management, mcp] = reserve_addresses()?;
         println!("Evidence: {}", evidence.display());
@@ -161,7 +170,7 @@ impl Harness {
                 "shared management and MCP registry before and after restart",
                 "virtual namespace qualified catalog, dispatch, updates, and restart recovery",
                 "registry state and exact tool-call audit IDs survive SIGTERM shutdown",
-                "forward recovery without replay", "admin UI disabled",
+                "forward recovery without replay",
             ],
         });
         self.save_json("result.json", &result)?;

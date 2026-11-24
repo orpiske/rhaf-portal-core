@@ -7,6 +7,14 @@ use serde_json::json;
 use support::Harness;
 
 #[tokio::test]
+async fn management_wrapper_without_external_services() -> Result<()> {
+    let harness = Harness::management_only()?;
+    let core = harness.start_core("management.log").await?;
+    harness.verify_management_wrapper().await?;
+    core.stop().await
+}
+
+#[tokio::test]
 #[ignore = "requires RHAF_MCP_FIXTURE_JAR and RHAF_MCP_FIXTURE_REVISION"]
 async fn conventional_runtime_against_controlled_mcp_fixture() -> Result<()> {
     let harness = Harness::from_env()?;

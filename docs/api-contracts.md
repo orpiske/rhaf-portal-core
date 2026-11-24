@@ -6,6 +6,11 @@ It uses Wanaku's `utoipa` pattern: Rust types derive `ToSchema`, and
 planned APIs. They do not install route handlers. Handler implementation belongs
 to the management wrapper and lifecycle tasks.
 
+The management listener serves the RHAF schema at
+`/api/rhaf/v1/openapi.json`. The upstream schema stays at `/openapi.json`.
+Unknown RHAF paths return 404. Unsupported methods on reserved RHAF paths return
+405 with an `Allow` header. Management responses use `Cache-Control: no-store`.
+
 ## Generate the schema
 
 Build the workspace:
