@@ -45,7 +45,7 @@ cargo openapi --check crates/rhaf-api/openapi.json
 
 Core uses Wanaku's public `App::build` API and its Praxis/Pingora pipeline.
 The executable pins Wanaku to commit
-[`bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b`](https://github.com/wanaku-ai/wanaku/commit/bf7cbeec6499c934e7bcad32e56a3a4a4325ff3b).
+[`7af5411b9ede7b63fb1c3a664c3570d51ec67354`](https://github.com/wanaku-ai/wanaku/commit/7af5411b9ede7b63fb1c3a664c3570d51ec67354).
 The dependency disables the upstream admin UI. The MCP and management handlers
 share one registry, credential broker, and audit store.
 
