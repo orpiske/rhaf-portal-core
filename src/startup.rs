@@ -229,6 +229,132 @@ fn validate_forward(forward: &ForwardEntry) -> Result<()> {
     Ok(())
 }
 
+pub fn validate_lifecycle_bootstrap(
+    config: Option<&serde_yaml::Value>,
+    persistence: &dyn PersistenceBackend,
+) -> Result<()> {
+    use rhaf_portal_core::lifecycle::{is_lifecycle_label, reservation_base};
+
+    let Some(config) = config else {
+        return Ok(());
+    };
+    let retained = persistence
+        .load()
+        .map_err(|_| anyhow::anyhow!("cannot load persisted lifecycle metadata"))?;
+    let claimed: Vec<_> = retained
+        .namespaces
+        .iter()
+        .filter(|namespace| namespace.labels.keys().any(|key| is_lifecycle_label(key)))
+        .collect();
+    let namespace_claimed = |name: &str| {
+        claimed.iter().any(|entry| {
+            entry.name == name
+                || reservation_base(entry).is_some_and(|base| {
+                    name.strip_suffix("-all") == Some(base)
+                        || name.strip_suffix("-progressive") == Some(base)
+                })
+        })
+    };
+    validate_bootstrap_namespaces(config, namespace_claimed)?;
+    validate_bootstrap_forwards(config, &claimed, &retained.forwards, namespace_claimed)
+}
+
+fn validate_bootstrap_namespaces(
+    config: &serde_yaml::Value,
+    namespace_claimed: impl Fn(&str) -> bool,
+) -> Result<()> {
+    use rhaf_portal_core::lifecycle::is_lifecycle_label;
+    use wanaku_types::registry::NamespaceEntry;
+
+    let namespaces: Vec<NamespaceEntry> = bootstrap_entries(config, "namespaces")?;
+    for namespace in namespaces {
+        ensure!(
+            !namespace.labels.keys().any(|key| is_lifecycle_label(key))
+                && !namespace_claimed(&namespace.name)
+                && !namespace
+                    .members
+                    .iter()
+                    .flatten()
+                    .any(|member| namespace_claimed(member)),
+            "bootstrap namespace conflicts with RHAF lifecycle metadata"
+        );
+    }
+    Ok(())
+}
+
+fn validate_bootstrap_forwards(
+    config: &serde_yaml::Value,
+    claimed: &[&wanaku_types::registry::NamespaceEntry],
+    retained_forwards: &[ForwardEntry],
+    namespace_claimed: impl Fn(&str) -> bool,
+) -> Result<()> {
+    use rhaf_portal_core::lifecycle::{is_lifecycle_label, reservation_owner};
+
+    let forwards: Vec<ForwardEntry> = bootstrap_entries(config, "forwards")?;
+    for forward in forwards {
+        ensure!(
+            !forward.labels.keys().any(|key| is_lifecycle_label(key))
+                && !forward.namespace.as_deref().is_some_and(&namespace_claimed)
+                && !claimed
+                    .iter()
+                    .any(|entry| reservation_owner(entry) == Some(forward.name.as_str()))
+                && !retained_forwards
+                    .iter()
+                    .any(|entry| entry.name == forward.name
+                        && entry.labels.keys().any(|key| is_lifecycle_label(key))),
+            "bootstrap forward conflicts with RHAF lifecycle metadata"
+        );
+    }
+    Ok(())
+}
+
+fn bootstrap_entries<T: serde::de::DeserializeOwned>(
+    config: &serde_yaml::Value,
+    section: &str,
+) -> Result<Vec<T>> {
+    config.get(section).map_or_else(
+        || Ok(Vec::new()),
+        |value| {
+            serde_yaml::from_value(value.clone())
+                .map_err(|_| anyhow::anyhow!("invalid bootstrap {section} configuration"))
+        },
+    )
+}
+
+#[cfg(test)]
+mod lifecycle_bootstrap_tests {
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use rhaf_portal_core::lifecycle::Lifecycle;
+    use wanaku_infra::persistence::FilePersistence;
+    use wanaku_infra::registry::InMemoryRegistry;
+
+    use super::validate_lifecycle_bootstrap;
+
+    #[tokio::test]
+    async fn bootstrap_preserves_namespace_only_reservations() -> anyhow::Result<()> {
+        let directory = tempfile::tempdir()?;
+        let persistence = Arc::new(FilePersistence::new(directory.path().join("registry.json")));
+        let registry = InMemoryRegistry::with_persistence(persistence.clone());
+        Lifecycle::new(registry.clone())
+            .reserve("managed", "owned")
+            .await?;
+        registry.flush_persistence(Duration::from_secs(5))?;
+        for yaml in [
+            "forwards: [{name: managed, address: 'http://127.0.0.1'}]",
+            "forwards: [{name: other, address: 'http://127.0.0.1', namespace: owned-all}]",
+            "namespaces: [{name: owned-progressive}]",
+        ] {
+            let config = serde_yaml::from_str(yaml)?;
+            assert!(validate_lifecycle_bootstrap(Some(&config), persistence.as_ref()).is_err());
+        }
+        let config = serde_yaml::from_str("namespaces: [{name: unmanaged}]")?;
+        validate_lifecycle_bootstrap(Some(&config), persistence.as_ref())?;
+        Ok(())
+    }
+}
+
 pub fn governance(root: Option<&serde_yaml::Value>) -> Result<GovernanceConfig> {
     let baseline: serde_yaml::Value = serde_yaml::from_str(include_str!("wanaku-defaults.yaml"))?;
     let governance = root

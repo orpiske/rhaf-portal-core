@@ -4,6 +4,7 @@ use std::os::fd::IntoRawFd;
 use anyhow::{Context, Result};
 use pingora_core::server::{ListenFds, ShutdownWatch};
 use pingora_core::services::Service;
+use rhaf_portal_core::lifecycle::Lifecycle;
 use wanaku_server::management::WanakuManagementService;
 
 use crate::management::ManagementService;
@@ -15,14 +16,18 @@ pub struct BoundManagement {
 }
 
 impl BoundManagement {
-    pub fn new(listener: TcpListener, management: WanakuManagementService) -> Result<Self> {
+    pub fn new(
+        listener: TcpListener,
+        management: WanakuManagementService,
+        lifecycle: Lifecycle,
+    ) -> Result<Self> {
         listener
             .set_nonblocking(true)
             .context("cannot configure management listener")?;
         let address = listener.local_addr()?.to_string();
         let mut service = pingora_core::services::listening::Service::new(
             "rhaf-management".to_owned(),
-            ManagementService::new(management),
+            ManagementService::new(management, lifecycle),
         );
         service.add_tcp(&address);
         Ok(Self {

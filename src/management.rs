@@ -2,14 +2,20 @@ use http::header::{ALLOW, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, HeaderVal
 use http::{Response, StatusCode};
 use pingora_core::apps::http_app::ServeHttp;
 use pingora_core::protocols::http::ServerSession;
+use rhaf_portal_core::lifecycle::{
+    Lifecycle, is_lifecycle_label, protects_forward, protects_namespace,
+};
+use wanaku_infra::registry::InMemoryRegistry;
 use wanaku_server::management::WanakuManagementService;
 use wanaku_types::feature::HttpContext;
 use wanaku_types::http_response::json_err;
+use wanaku_types::registry::{ForwardEntry, ForwardRegistry, NamespaceEntry};
 
 const MAX_BODY_BYTES: usize = 1_048_576;
 
 pub struct ManagementService {
     wanaku: WanakuManagementService,
+    lifecycle: Lifecycle,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -47,8 +53,8 @@ fn resolve_route(method: &str, path: &str) -> Route {
 }
 
 impl ManagementService {
-    pub const fn new(wanaku: WanakuManagementService) -> Self {
-        Self { wanaku }
+    pub const fn new(wanaku: WanakuManagementService, lifecycle: Lifecycle) -> Self {
+        Self { wanaku, lifecycle }
     }
 
     pub async fn dispatch(&self, ctx: &HttpContext<'_>) -> Response<Vec<u8>> {
@@ -64,7 +70,7 @@ impl ManagementService {
             ),
             Route::MethodNotAllowed(allowed) => method_not_allowed(allowed),
             Route::NotFound => json_err(StatusCode::NOT_FOUND, "not found"),
-            Route::Wanaku => self.wanaku.dispatch(ctx).await,
+            Route::Wanaku => self.dispatch_wanaku(ctx).await,
         };
         response
             .headers_mut()
@@ -78,6 +84,94 @@ impl ManagementService {
         }
         response
     }
+
+    async fn dispatch_wanaku(&self, ctx: &HttpContext<'_>) -> Response<Vec<u8>> {
+        if !matches!(ctx.method, "POST" | "PUT" | "DELETE")
+            || !["/api/v1/forwards", "/api/v1/namespaces"]
+                .iter()
+                .any(|prefix| {
+                    ctx.path
+                        .strip_prefix(prefix)
+                        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+                })
+        {
+            return self.wanaku.dispatch(ctx).await;
+        }
+
+        // Wanaku's raw registration endpoint performs its own discovery and
+        // publication. Keep its entire delegation serialized with reservations.
+        let _commit = self.lifecycle.commit_guard().await;
+        if raw_lifecycle_conflict(self.lifecycle.registry(), ctx) {
+            return json_err(
+                StatusCode::CONFLICT,
+                "record is reserved by the RHAF lifecycle",
+            );
+        }
+        self.wanaku.dispatch(ctx).await
+    }
+}
+
+fn raw_lifecycle_conflict(registry: &InMemoryRegistry, ctx: &HttpContext<'_>) -> bool {
+    let body = ctx.body.unwrap_or_default();
+    match (ctx.method, ctx.path) {
+        ("POST", "/api/v1/forwards" | "/api/v1/forwards/") => {
+            forward_write_conflicts(registry, body)
+        }
+        ("POST", "/api/v1/namespaces" | "/api/v1/namespaces/") => {
+            namespace_write_conflicts(registry, body, None)
+        }
+        ("PUT", path) => path
+            .strip_prefix("/api/v1/namespaces/")
+            .filter(|name| !name.is_empty())
+            .is_some_and(|name| namespace_write_conflicts(registry, body, Some(name))),
+        ("DELETE", path) if path.starts_with("/api/v1/namespaces/") => {
+            protects_namespace(registry, &path["/api/v1/namespaces/".len()..])
+        }
+        ("POST", path) => path
+            .strip_suffix("/refreshes")
+            .is_some_and(|path| forward_path_conflicts(registry, path)),
+        ("DELETE", path) => forward_path_conflicts(registry, path),
+        _ => false,
+    }
+}
+
+fn forward_write_conflicts(registry: &InMemoryRegistry, body: &str) -> bool {
+    serde_json::from_str::<ForwardEntry>(body).is_ok_and(|forward| {
+        forward.labels.keys().any(|key| is_lifecycle_label(key))
+            || protects_forward(registry, &forward.name)
+            || forward
+                .namespace
+                .as_deref()
+                .is_some_and(|name| protects_namespace(registry, name))
+    })
+}
+
+fn forward_path_conflicts(registry: &InMemoryRegistry, path: &str) -> bool {
+    path.strip_prefix("/api/v1/forwards/").is_some_and(|name| {
+        !name.is_empty()
+            && !name.contains('/')
+            && (protects_forward(registry, name)
+                || registry
+                    .get_forward(name)
+                    .and_then(|forward| forward.namespace)
+                    .is_some_and(|namespace| protects_namespace(registry, &namespace)))
+    })
+}
+
+fn namespace_write_conflicts(
+    registry: &InMemoryRegistry,
+    body: &str,
+    path_name: Option<&str>,
+) -> bool {
+    serde_json::from_str::<NamespaceEntry>(body).is_ok_and(|namespace| {
+        namespace.labels.keys().any(|key| is_lifecycle_label(key))
+            || protects_namespace(registry, path_name.unwrap_or(&namespace.name))
+            || namespace
+                .members
+                .iter()
+                .flatten()
+                .any(|member| protects_namespace(registry, member))
+    })
 }
 
 fn method_not_allowed(allowed: &'static str) -> Response<Vec<u8>> {
@@ -169,13 +263,17 @@ mod tests {
     use wanaku_types::credentials::ResolverRegistry;
     use wanaku_types::feature::HttpContext;
 
-    fn service() -> ManagementService {
-        ManagementService::new(WanakuManagementService::new(
-            InMemoryRegistry::new(),
-            Arc::new(CredentialBroker::new(ResolverRegistry::new())),
-            None,
-            Vec::new(),
-        ))
+    pub(super) fn service() -> ManagementService {
+        let registry = InMemoryRegistry::new();
+        ManagementService::new(
+            WanakuManagementService::new(
+                registry.clone(),
+                Arc::new(CredentialBroker::new(ResolverRegistry::new())),
+                None,
+                Vec::new(),
+            ),
+            super::Lifecycle::new(registry),
+        )
     }
 
     #[test]
@@ -322,5 +420,62 @@ mod tests {
             assert!(schema["paths"].get(other_route).is_none());
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use http::{HeaderMap, StatusCode};
+    use wanaku_types::feature::HttpContext;
+
+    use super::tests::service;
+
+    #[tokio::test]
+    async fn raw_publication_and_namespace_mutations_respect_reservations() -> anyhow::Result<()> {
+        let service = service();
+        service.lifecycle.reserve("managed", "owned").await?;
+        let headers = HeaderMap::new();
+        for (method, path, body) in [
+            (
+                "POST",
+                "/api/v1/forwards",
+                Some(r#"{"name":"managed","address":"http://127.0.0.1"}"#),
+            ),
+            (
+                "POST",
+                "/api/v1/forwards/",
+                Some(r#"{"name":"other","address":"http://127.0.0.1","namespace":"owned-all"}"#),
+            ),
+            ("POST", "/api/v1/forwards/managed/refreshes", None),
+            ("DELETE", "/api/v1/forwards/managed", None),
+            (
+                "PUT",
+                "/api/v1/namespaces/owned-progressive",
+                Some(r#"{"name":"owned-progressive"}"#),
+            ),
+            ("DELETE", "/api/v1/namespaces/owned-all", None),
+        ] {
+            let response = service
+                .dispatch(&HttpContext::new(method, path, None, body, &headers))
+                .await;
+            assert_eq!(response.status(), StatusCode::CONFLICT, "{method} {path}");
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_namespace_creation_still_accepts_unmanaged_records() {
+        let service = service();
+        let headers = HeaderMap::new();
+        let response = service
+            .dispatch(&HttpContext::new(
+                "POST",
+                "/api/v1/namespaces",
+                None,
+                Some(r#"{"name":"unmanaged"}"#),
+                &headers,
+            ))
+            .await;
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

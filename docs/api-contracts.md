@@ -86,6 +86,23 @@ The maintainer approved this decision on 2026-11-19 for the identity contract
 required by issues #3 and #8. Operators and other consumers can use this identity
 to distinguish replacement from deletion followed by recreation.
 
+### Reservation storage
+
+Core reserves the forward name and both derived namespaces before discovery.
+The base must contain 1 to 51 lowercase ASCII letters, digits, or hyphens. It
+must start and end with a letter or digit. An existing namespace conflicts with
+a new reservation even when the namespace is empty.
+
+Wanaku persists ownership and lifecycle state as internal namespace labels.
+Both namespaces carry the same forward name, base, and registration identity.
+The forward carries that base and identity when discovery publishes it. This
+lets Core detect a reservation before publication and retain it during cleanup.
+
+Core checks ownership again before reconnect publishes a discovery result.
+Wanaku checks that the registration and its bindings stayed current during
+discovery. Bootstrap and raw forward and namespace operations cannot overwrite
+reserved ownership metadata.
+
 ## Product catalog
 
 `GET /api/rhaf/v1/catalog` returns loaded, absent, or invalid status. An absent or
@@ -107,5 +124,5 @@ workspace Wanaku pin changes.
 
 The upstream specification also describes operations that Core can restrict or
 disable. It does not establish permission to bypass the RHAF lifecycle for
-managed records. The RHAF wrapper and mutation guards belong to subsequent
-implementation tasks.
+managed records. Core protects reservation metadata on the raw forward and
+namespace routes. Later lifecycle work defines the raw capability mutation rules.

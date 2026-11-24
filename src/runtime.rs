@@ -6,9 +6,11 @@ use praxis_core::PingoraServerRuntime;
 use praxis_core::config::Config;
 use praxis_protocol::Protocol as _;
 use praxis_protocol::http::PingoraHttp;
+use rhaf_portal_core::lifecycle::Lifecycle;
 use tracing::info;
 use wanaku_server::app::App;
 
+use crate::reconnect::Reconnect;
 use crate::startup::Args;
 
 pub fn run(
@@ -22,8 +24,9 @@ pub fn run(
     let _cert_shutdowns = Box::new(PingoraHttp)
         .register(&mut server, pipeline, &app.pipelines)
         .context("cannot register MCP listener")?;
-    register_background_services(&app, &mut server);
-    let management = crate::listeners::BoundManagement::new(listener, app.management)?;
+    let lifecycle = Lifecycle::new(registry.clone());
+    register_background_services(&app, &mut server, lifecycle.clone());
+    let management = crate::listeners::BoundManagement::new(listener, app.management, lifecycle)?;
     server.server_mut().add_service(management);
     info!(mcp = %args.mcp_listen, management = %args.management_listen,
         version = crate::VERSION, "starting RHAF Portal Core");
@@ -37,7 +40,11 @@ pub fn run(
     Ok(())
 }
 
-fn register_background_services(app: &App, server: &mut PingoraServerRuntime) {
+fn register_background_services(
+    app: &App,
+    server: &mut PingoraServerRuntime,
+    lifecycle: Lifecycle,
+) {
     let persistence = wanaku_server::management::registry_persistence_service(app.registry.clone());
     let persistence = pingora_core::services::background::GenBackgroundService::new(
         "rhaf-registry-persistence".to_owned(),
@@ -45,12 +52,12 @@ fn register_background_services(app: &App, server: &mut PingoraServerRuntime) {
     );
     server.server_mut().add_service(persistence);
     if let Some(interval) = wanaku_types::config::ENV.forward_healthcheck_interval {
-        let reconnect = wanaku_server::management::reconnect_service(
-            app.registry.clone(),
-            Arc::clone(&app.broker),
-            Some(Arc::clone(&app.audit_sink)),
+        let reconnect = Arc::new(Reconnect {
+            lifecycle,
+            broker: Arc::clone(&app.broker),
+            audit_sink: Arc::clone(&app.audit_sink),
             interval,
-        );
+        });
         let reconnect = pingora_core::services::background::GenBackgroundService::new(
             "rhaf-forward-reconnect".to_owned(),
             reconnect,
