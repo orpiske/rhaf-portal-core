@@ -4422,6 +4422,7 @@ dependencies = [
  "clap",
  "http",
  "nix 0.32.0",
+ "percent-encoding",
  "praxis-proxy-core",
  "praxis-proxy-protocol",
  "praxis-proxy-tls",

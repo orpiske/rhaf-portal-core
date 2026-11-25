@@ -1,9 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
+use rhaf_api::models::{CredentialBindings, Forward, LifecycleState};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 use wanaku_infra::registry::InMemoryRegistry;
+use wanaku_types::credentials::CredentialPurpose;
 use wanaku_types::registry::{
     DEFAULT_NAMESPACE, ForwardEntry, ForwardRegistry, NamespaceEntry, NamespaceRegistry,
     PromptRegistry, ResourceRegistry, ToolRegistry, validate_namespace_name,
@@ -16,6 +18,7 @@ const ID: &str = "rhaf.lifecycle/registration-id";
 const STATE: &str = "rhaf.lifecycle/state";
 const REGISTERING: &str = "registering";
 const ACTIVE: &str = "active";
+const FAILED: &str = "failedRegistrationCleanup";
 
 #[derive(Clone)]
 pub struct Lifecycle {
@@ -89,7 +92,7 @@ impl Lifecycle {
         &self,
         forward: &str,
     ) -> Result<Option<Registration>, LifecycleError> {
-        self.commit(|registry| Registration::restore(registry, forward))
+        self.commit(|registry| Registration::lookup(registry, forward))
             .await
     }
 
@@ -103,14 +106,7 @@ impl Lifecycle {
                 return Err(LifecycleError::Conflict);
             }
             validate_discovery(registry, &forward)?;
-            let namespaces = registration.owned_namespaces(registry)?;
-            for mut namespace in namespaces {
-                namespace.labels.insert(STATE.to_owned(), ACTIVE.to_owned());
-                registry
-                    .try_register_namespace(namespace)
-                    .map_err(LifecycleError::Registry)?;
-            }
-            Ok(())
+            registration.mark_active(registry)
         })
         .await
     }
@@ -121,12 +117,75 @@ impl Registration {
         &self.id
     }
 
+    pub fn base(&self) -> &str {
+        &self.base
+    }
+
     pub fn conventional_namespace(&self) -> String {
         format!("{}-all", self.base)
     }
 
     pub fn progressive_namespace(&self) -> String {
         format!("{}-progressive", self.base)
+    }
+
+    pub fn mark_active(&self, registry: &InMemoryRegistry) -> Result<(), LifecycleError> {
+        self.set_state(registry, ACTIVE)
+    }
+
+    pub fn mark_failed(&self, registry: &InMemoryRegistry) -> Result<(), LifecycleError> {
+        self.set_state(registry, FAILED)
+    }
+
+    fn set_state(&self, registry: &InMemoryRegistry, state: &str) -> Result<(), LifecycleError> {
+        for mut namespace in self.owned_namespaces(registry)? {
+            namespace.labels.insert(STATE.to_owned(), state.to_owned());
+            registry
+                .try_register_namespace(namespace)
+                .map_err(LifecycleError::Registry)?;
+        }
+        Ok(())
+    }
+
+    pub fn views(registry: &InMemoryRegistry) -> Result<Vec<Forward>, LifecycleError> {
+        let namespaces = registry.list_namespaces();
+        let names: BTreeSet<_> = namespaces.iter().filter_map(reservation_owner).collect();
+        names
+            .into_iter()
+            .map(|name| {
+                Self::lookup(registry, name)?
+                    .ok_or(LifecycleError::Conflict)?
+                    .view(registry)
+            })
+            .collect()
+    }
+
+    pub fn view(&self, registry: &InMemoryRegistry) -> Result<Forward, LifecycleError> {
+        let [conventional, progressive] = self.owned_namespaces(registry)?;
+        let state = match label(&conventional.labels, STATE) {
+            Some(ACTIVE) => LifecycleState::Active,
+            Some(REGISTERING) => LifecycleState::Registering,
+            Some(FAILED) => LifecycleState::FailedRegistrationCleanup,
+            Some("deleting") => LifecycleState::Deleting,
+            _ => return Err(LifecycleError::Conflict),
+        };
+        let mut view = Forward {
+            name: self.forward.clone(),
+            address: String::new(),
+            namespace_base: self.base.clone(),
+            conventional_namespace: conventional.name,
+            progressive_namespace: progressive.name,
+            registration_id: self.id.clone(),
+            labels: Default::default(),
+            credential_bindings: CredentialBindings::default(),
+            state,
+            available: None,
+            message: None,
+        };
+        if let Some(forward) = registry.get_forward(&self.forward) {
+            fill_forward_view(&mut view, forward);
+        }
+        Ok(view)
     }
 
     /// Stamp the same identity on the candidate for initial publication or replacement.
@@ -188,7 +247,10 @@ impl Registration {
                 .any(|forward| conflicts(&forward.labels))
     }
 
-    fn restore(registry: &InMemoryRegistry, forward: &str) -> Result<Option<Self>, LifecycleError> {
+    pub fn lookup(
+        registry: &InMemoryRegistry,
+        forward: &str,
+    ) -> Result<Option<Self>, LifecycleError> {
         let Some(namespace) = registry
             .list_namespaces()
             .into_iter()
@@ -245,6 +307,32 @@ impl Registration {
         };
         Ok([get_owned(&names[0])?, get_owned(&names[1])?])
     }
+}
+
+fn fill_forward_view(view: &mut Forward, forward: ForwardEntry) {
+    view.available = Some(forward.available);
+    view.message = forward.status_message.as_ref().map(|_| {
+        if forward.available {
+            "some upstream capabilities could not be registered"
+        } else {
+            "upstream discovery failed"
+        }
+        .to_owned()
+    });
+    view.credential_bindings = CredentialBindings {
+        discovery: forward
+            .binding_for(CredentialPurpose::Discovery)
+            .map(str::to_owned),
+        invocation: forward
+            .binding_for(CredentialPurpose::Invocation)
+            .map(str::to_owned),
+    };
+    view.address = forward.address;
+    view.labels = forward
+        .labels
+        .into_iter()
+        .filter(|(key, _)| !is_lifecycle_label(key))
+        .collect();
 }
 
 pub fn is_lifecycle_label(label: &str) -> bool {

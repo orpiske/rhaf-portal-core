@@ -29,6 +29,7 @@ anyhow.workspace = true
 async-trait = "0.1.92"
 clap.workspace = true
 http = "1"
+percent-encoding = "2"
 rhaf-api = { path = "crates/rhaf-api" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

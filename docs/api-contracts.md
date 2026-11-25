@@ -2,9 +2,8 @@
 
 The `rhaf-api` crate defines the RHAF lifecycle and product catalog contracts.
 It uses Wanaku's `utoipa` pattern: Rust types derive `ToSchema`, and
-`utoipa::path` declarations define the operations. The RHAF declarations describe
-planned APIs. They do not install route handlers. Handler implementation belongs
-to the management wrapper and lifecycle tasks.
+`utoipa::path` declarations define the operations. The management wrapper
+serves the schema and routes management requests.
 
 The management listener serves the RHAF schema at
 `/api/rhaf/v1/openapi.json`. The upstream schema stays at `/openapi.json`.
@@ -53,6 +52,7 @@ deletion, invalid requests, missing registrations, and catalog states.
 
 Requests contain desired configuration. The name and namespace base are
 immutable. Core derives `<base>-all` and `<base>-progressive` from the base.
+Encode the forward name as one URL path segment when you use an item route.
 Runtime state, derived namespace names, and internal lifecycle labels are not
 request fields. Credential bindings contain configured binding identifiers.
 They do not contain secret values.
@@ -61,6 +61,13 @@ Responses use a `data`/`error` envelope. Successful responses contain data and a
 null error. Error responses contain null data and a safe error string.
 Availability can be true, false, or null. Null means that availability has not
 been determined. Lifecycle state and availability are separate fields.
+
+Create returns 201 after Wanaku persists the forward and both namespace
+reservations. If discovery fails for a valid new forward, Core keeps the
+registration active with availability set to false. A duplicate create returns
+409. A successful replacement returns 200 after persistence and keeps the
+registration identity. Lifecycle reads return managed reservations. A
+namespace-only reservation has an empty address and null availability.
 
 Deletion returns 202 while cleanup is pending and 200 after durable completion.
 A registration stays in `deleting` state until cleanup persistence is

@@ -1,3 +1,7 @@
+mod forwards;
+
+use std::sync::Arc;
+
 use http::header::{ALLOW, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, HeaderValue};
 use http::{Response, StatusCode};
 use pingora_core::apps::http_app::ServeHttp;
@@ -5,6 +9,7 @@ use pingora_core::protocols::http::ServerSession;
 use rhaf_portal_core::lifecycle::{
     Lifecycle, is_lifecycle_label, protects_forward, protects_namespace,
 };
+use wanaku_infra::credentials::{CredentialAuditSink, CredentialBroker};
 use wanaku_infra::registry::InMemoryRegistry;
 use wanaku_server::management::WanakuManagementService;
 use wanaku_types::feature::HttpContext;
@@ -15,7 +20,7 @@ const MAX_BODY_BYTES: usize = 1_048_576;
 
 pub struct ManagementService {
     wanaku: WanakuManagementService,
-    lifecycle: Lifecycle,
+    forwards: forwards::ForwardService,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -53,17 +58,26 @@ fn resolve_route(method: &str, path: &str) -> Route {
 }
 
 impl ManagementService {
-    pub const fn new(wanaku: WanakuManagementService, lifecycle: Lifecycle) -> Self {
-        Self { wanaku, lifecycle }
+    pub const fn new(
+        wanaku: WanakuManagementService,
+        lifecycle: Lifecycle,
+        broker: Arc<CredentialBroker>,
+        audit_sink: Option<Arc<dyn CredentialAuditSink>>,
+    ) -> Self {
+        Self {
+            wanaku,
+            forwards: forwards::ForwardService {
+                lifecycle,
+                broker,
+                audit_sink,
+            },
+        }
     }
 
     pub async fn dispatch(&self, ctx: &HttpContext<'_>) -> Response<Vec<u8>> {
         let mut response = match resolve_route(ctx.method, ctx.path) {
             Route::Schema => schema_response(),
-            Route::Lifecycle => json_err(
-                StatusCode::NOT_IMPLEMENTED,
-                "RHAF lifecycle operations are not available in this build",
-            ),
+            Route::Lifecycle => self.forwards.dispatch(ctx.method, ctx.path, ctx.body).await,
             Route::Catalog => json_err(
                 StatusCode::NOT_IMPLEMENTED,
                 "RHAF catalog operations are not available in this build",
@@ -100,8 +114,8 @@ impl ManagementService {
 
         // Wanaku's raw registration endpoint performs its own discovery and
         // publication. Keep its entire delegation serialized with reservations.
-        let _commit = self.lifecycle.commit_guard().await;
-        if raw_lifecycle_conflict(self.lifecycle.registry(), ctx) {
+        let _commit = self.forwards.lifecycle.commit_guard().await;
+        if raw_lifecycle_conflict(self.forwards.lifecycle.registry(), ctx) {
             return json_err(
                 StatusCode::CONFLICT,
                 "record is reserved by the RHAF lifecycle",
@@ -265,14 +279,12 @@ mod tests {
 
     pub(super) fn service() -> ManagementService {
         let registry = InMemoryRegistry::new();
+        let broker = Arc::new(CredentialBroker::new(ResolverRegistry::new()));
         ManagementService::new(
-            WanakuManagementService::new(
-                registry.clone(),
-                Arc::new(CredentialBroker::new(ResolverRegistry::new())),
-                None,
-                Vec::new(),
-            ),
+            WanakuManagementService::new(registry.clone(), Arc::clone(&broker), None, Vec::new()),
             super::Lifecycle::new(registry),
+            broker,
+            None,
         )
     }
 
@@ -309,7 +321,7 @@ mod tests {
                 &headers,
             ))
             .await;
-        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(response.headers()["cache-control"], "no-store");
         let body: rhaf_api::models::ErrorResponse = serde_json::from_slice(response.body())?;
         assert!(!body.error.is_empty());
@@ -349,10 +361,9 @@ mod tests {
         let service = service();
         let headers = HeaderMap::new();
         for (method, path, status, allowed) in [
-            ("GET", "/api/rhaf/v1/forwards", 501, None),
-            ("POST", "/api/rhaf/v1/forwards", 501, None),
-            ("GET", "/api/rhaf/v1/forwards/registered", 501, None),
-            ("PUT", "/api/rhaf/v1/forwards/registered", 501, None),
+            ("POST", "/api/rhaf/v1/forwards", 400, None),
+            ("GET", "/api/rhaf/v1/forwards/registered", 404, None),
+            ("PUT", "/api/rhaf/v1/forwards/registered", 400, None),
             ("DELETE", "/api/rhaf/v1/forwards/registered", 501, None),
             ("GET", "/api/rhaf/v1/catalog", 501, None),
             ("GET", "/api/rhaf/v1/unknown", 404, None),
@@ -433,7 +444,8 @@ mod lifecycle_tests {
     #[tokio::test]
     async fn raw_publication_and_namespace_mutations_respect_reservations() -> anyhow::Result<()> {
         let service = service();
-        service.lifecycle.reserve("managed", "owned").await?;
+        let lifecycle = &service.forwards.lifecycle;
+        lifecycle.reserve("managed", "owned").await?;
         let headers = HeaderMap::new();
         for (method, path, body) in [
             (

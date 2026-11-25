@@ -1,5 +1,6 @@
 mod governance;
 pub mod http;
+mod lifecycle;
 mod management;
 mod process;
 mod scenario;
@@ -172,6 +173,8 @@ impl Harness {
                 "virtual namespace qualified catalog, dispatch, updates, and restart recovery",
                 "registry state and exact tool-call audit IDs survive SIGTERM shutdown",
                 "forward recovery without replay",
+                "lifecycle replacement preserves identity and commits before the response",
+                "failed lifecycle discovery preserves the prior registration and capabilities",
             ],
         });
         self.save_json("result.json", &result)?;
