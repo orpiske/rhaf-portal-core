@@ -26,7 +26,13 @@ pub fn run(
         .context("cannot register MCP listener")?;
     let lifecycle = Lifecycle::new(registry.clone());
     register_background_services(&app, &mut server, lifecycle.clone());
-    let management = crate::listeners::BoundManagement::new(listener, app.management, lifecycle)?;
+    let management = crate::management::ManagementService::new(
+        app.management,
+        lifecycle,
+        Arc::clone(&app.broker),
+        Some(Arc::clone(&app.audit_sink)),
+    );
+    let management = crate::listeners::BoundManagement::new(listener, management)?;
     server.server_mut().add_service(management);
     info!(mcp = %args.mcp_listen, management = %args.management_listen,
         version = crate::VERSION, "starting RHAF Portal Core");

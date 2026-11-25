@@ -11,6 +11,7 @@ async fn management_wrapper_without_external_services() -> Result<()> {
     let harness = Harness::management_only()?;
     let core = harness.start_core("management.log").await?;
     harness.verify_management_wrapper().await?;
+    harness.verify_unavailable_registration().await?;
     core.stop().await
 }
 
@@ -33,6 +34,7 @@ async fn conventional_runtime_against_controlled_mcp_fixture() -> Result<()> {
     );
     let second = harness.start_core("core-restart.log").await?;
     harness.verify_restart(&expected).await?;
+    harness.verify_lifecycle_replacement().await?;
     second.stop().await?;
     harness
         .verify_observational_deny_and_storage_failure(&expected)

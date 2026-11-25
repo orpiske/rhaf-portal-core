@@ -29,7 +29,7 @@ impl Harness {
     }
 
     async fn verify_rhaf_dispatch(&self, client: &reqwest::Client) -> Result<()> {
-        // The RHAF boundary must not delegate unavailable operations as raw mutations.
+        // Bypass headers must not turn an invalid lifecycle request into a raw mutation.
         let response = client
             .post(self.management_url("/api/rhaf/v1/forwards"))
             .header("x-rhaf-internal", "true")
@@ -37,7 +37,7 @@ impl Harness {
             .json(&json!({"name": "not-created"}))
             .send()
             .await?;
-        ensure!(response.status() == 501);
+        ensure!(response.status() == 400);
         ensure!(response.headers()["cache-control"] == "no-store");
         let body: serde_json::Value = response.json().await?;
         ensure!(body["data"].is_null() && body["error"].is_string());
