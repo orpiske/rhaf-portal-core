@@ -73,6 +73,25 @@ async fn progressive_tool_stays_readable_and_unmanaged_tool_can_change() -> anyh
 }
 
 #[tokio::test]
+async fn raw_handler_snapshot_rejects_managed_targets_on_both_paths() -> anyhow::Result<()> {
+    let service = service();
+    service
+        .forwards
+        .lifecycle
+        .reserve("managed", "owned")
+        .await?;
+    let body = r#"[{"tool":{"name":"example","description":"","uri":"test://example","type":"wasm","inputSchema":{"type":"object"},"namespace":"owned-progressive"},"path":"example.wasm"}]"#;
+    let headers = HeaderMap::new();
+    for path in ["/api/v1/tool-handlers", "/api/v1/tool-handlers/"] {
+        let response = service
+            .dispatch(&HttpContext::new("PUT", path, None, Some(body), &headers))
+            .await;
+        assert_eq!(response.status(), StatusCode::CONFLICT, "{path}");
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn raw_handler_snapshot_preserves_managed_progressive_tool() -> anyhow::Result<()> {
     let service = service();
     let lifecycle = &service.forwards.lifecycle;
@@ -82,6 +101,7 @@ async fn raw_handler_snapshot_preserves_managed_progressive_tool() -> anyhow::Re
     let headers = HeaderMap::new();
     for (method, path, body) in [
         ("PUT", "/api/v1/tool-handlers", Some("[]")),
+        ("PUT", "/api/v1/tool-handlers/", Some("[]")),
         (
             "DELETE",
             "/api/v1/tool-handlers/owned-progressive/example",
