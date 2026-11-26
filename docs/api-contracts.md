@@ -132,4 +132,8 @@ workspace Wanaku pin changes.
 The upstream specification also describes operations that Core can restrict or
 disable. It does not establish permission to bypass the RHAF lifecycle for
 managed records. Core protects reservation metadata on the raw forward and
-namespace routes. Later lifecycle work defines the raw capability mutation rules.
+namespace routes. Core returns 409 for raw writes that affect an RHAF-managed
+namespace, including tool, resource, and prompt mutations. Reads and writes to
+unmanaged records continue to use Wanaku. The tool-handler collection update
+replaces the complete binding set, so it conflicts if it would change managed
+bindings.
