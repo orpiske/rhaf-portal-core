@@ -13,6 +13,7 @@ impl Harness {
         self.verify_rhaf_schema(&client).await?;
         self.verify_rhaf_dispatch(&client).await?;
         self.verify_raw_delegation().await?;
+        self.verify_raw_handler_snapshot_delegation(&client).await?;
         self.verify_management_body_errors(&client).await
     }
 
@@ -83,6 +84,21 @@ impl Harness {
         let mcp = format!("http://{}/wrapper-shared/mcp", self.mcp);
         self.http.initialize(&mcp, "management-wrapper").await?;
         ensure!(self.http.tools(&mcp).await?.is_empty());
+        Ok(())
+    }
+
+    async fn verify_raw_handler_snapshot_delegation(&self, client: &reqwest::Client) -> Result<()> {
+        let response = client
+            .put(self.management_url("/api/v1/tool-handlers/"))
+            .json(&json!([]))
+            .send()
+            .await?;
+        let status = response.status();
+        let body: serde_json::Value = response.json().await?;
+        ensure!(
+            status == 200 && body["data"]["activated"] == true,
+            "unmanaged tool-handler snapshot was not delegated: {body}"
+        );
         Ok(())
     }
 

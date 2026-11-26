@@ -238,9 +238,7 @@ fn capability_write_conflicts(
             .split_once('/')
             .filter(|(ns, name)| !ns.is_empty() && !name.is_empty() && !name.contains('/'))
             .is_some_and(|(ns, _)| protects_namespace(registry, ns)),
-        ("tool-handlers", "PUT", "") if ctx.path == "/api/v1/tool-handlers" => {
-            handler_snapshot_conflicts(registry, body)
-        }
+        ("tool-handlers", "PUT", "") => handler_snapshot_conflicts(registry, body),
         _ => false,
     }
 }
