@@ -42,6 +42,7 @@ serde_yaml = { package = "yaml_serde", version = "0.10.4" }
 tempfile = "3"
 thiserror = "2"
 tracing = "0.1.44"
+url = "2"
 uuid = { version = "1", features = ["v4"] }
 tokio = { version = "1", features = ["macros", "sync", "time"] }
 # All Wanaku crates use the same pinned revision. The admin UI is disabled.

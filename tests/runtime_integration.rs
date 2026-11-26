@@ -16,6 +16,11 @@ async fn management_wrapper_without_external_services() -> Result<()> {
 }
 
 #[tokio::test]
+async fn product_catalog_without_external_services() -> Result<()> {
+    Harness::management_only()?.verify_product_catalog().await
+}
+
+#[tokio::test]
 #[ignore = "requires RHAF_MCP_FIXTURE_JAR and RHAF_MCP_FIXTURE_REVISION"]
 async fn conventional_runtime_against_controlled_mcp_fixture() -> Result<()> {
     let harness = Harness::from_env()?;

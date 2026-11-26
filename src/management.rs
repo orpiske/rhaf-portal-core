@@ -9,6 +9,7 @@ use http::header::{ALLOW, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, HeaderVal
 use http::{Response, StatusCode};
 use pingora_core::apps::http_app::ServeHttp;
 use pingora_core::protocols::http::ServerSession;
+use rhaf_api::models::Catalog;
 use rhaf_portal_core::lifecycle::{
     Lifecycle, is_lifecycle_label, protects_forward, protects_namespace,
 };
@@ -17,7 +18,7 @@ use wanaku_infra::registry::InMemoryRegistry;
 use wanaku_server::management::WanakuManagementService;
 use wanaku_types::agents::AgentEntry;
 use wanaku_types::feature::HttpContext;
-use wanaku_types::http_response::json_err;
+use wanaku_types::http_response::{json_err, json_ok};
 use wanaku_types::registry::{
     DEFAULT_NAMESPACE, ForwardEntry, ForwardRegistry, NamespaceEntry, ToolEntry, ToolRegistry,
 };
@@ -27,6 +28,7 @@ const MAX_BODY_BYTES: usize = 1_048_576;
 pub struct ManagementService {
     wanaku: WanakuManagementService,
     forwards: forwards::ForwardService,
+    catalog: Catalog,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -69,6 +71,7 @@ impl ManagementService {
         lifecycle: Lifecycle,
         broker: Arc<CredentialBroker>,
         audit_sink: Option<Arc<dyn CredentialAuditSink>>,
+        catalog: Catalog,
     ) -> Self {
         Self {
             wanaku,
@@ -77,6 +80,7 @@ impl ManagementService {
                 broker,
                 audit_sink,
             },
+            catalog,
         }
     }
 
@@ -84,10 +88,7 @@ impl ManagementService {
         let mut response = match resolve_route(ctx.method, ctx.path) {
             Route::Schema => schema_response(),
             Route::Lifecycle => self.forwards.dispatch(ctx.method, ctx.path, ctx.body).await,
-            Route::Catalog => json_err(
-                StatusCode::NOT_IMPLEMENTED,
-                "RHAF catalog operations are not available in this build",
-            ),
+            Route::Catalog => json_ok(&serde_json::json!(self.catalog)),
             Route::MethodNotAllowed(allowed) => method_not_allowed(allowed),
             Route::NotFound => json_err(StatusCode::NOT_FOUND, "not found"),
             Route::Wanaku => self.dispatch_wanaku(ctx).await,
@@ -372,6 +373,7 @@ mod tests {
             super::Lifecycle::new(registry),
             broker,
             None,
+            crate::catalog::load(None),
         )
     }
 
@@ -452,7 +454,6 @@ mod tests {
             ("GET", "/api/rhaf/v1/forwards/registered", 404, None),
             ("PUT", "/api/rhaf/v1/forwards/registered", 400, None),
             ("DELETE", "/api/rhaf/v1/forwards/registered", 501, None),
-            ("GET", "/api/rhaf/v1/catalog", 501, None),
             ("GET", "/api/rhaf/v1/unknown", 404, None),
             ("DELETE", "/api/rhaf/v1/forwards", 405, Some("GET, POST")),
             (
