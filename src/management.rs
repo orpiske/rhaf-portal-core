@@ -1,5 +1,8 @@
 mod forwards;
 
+#[cfg(test)]
+mod guard_tests;
+
 use std::sync::Arc;
 
 use http::header::{ALLOW, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, HeaderValue};
@@ -12,9 +15,12 @@ use rhaf_portal_core::lifecycle::{
 use wanaku_infra::credentials::{CredentialAuditSink, CredentialBroker};
 use wanaku_infra::registry::InMemoryRegistry;
 use wanaku_server::management::WanakuManagementService;
+use wanaku_types::agents::AgentEntry;
 use wanaku_types::feature::HttpContext;
 use wanaku_types::http_response::json_err;
-use wanaku_types::registry::{ForwardEntry, ForwardRegistry, NamespaceEntry};
+use wanaku_types::registry::{
+    DEFAULT_NAMESPACE, ForwardEntry, ForwardRegistry, NamespaceEntry, ToolEntry, ToolRegistry,
+};
 
 const MAX_BODY_BYTES: usize = 1_048_576;
 
@@ -101,13 +107,21 @@ impl ManagementService {
 
     async fn dispatch_wanaku(&self, ctx: &HttpContext<'_>) -> Response<Vec<u8>> {
         if !matches!(ctx.method, "POST" | "PUT" | "DELETE")
-            || !["/api/v1/forwards", "/api/v1/namespaces"]
-                .iter()
-                .any(|prefix| {
-                    ctx.path
-                        .strip_prefix(prefix)
-                        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
-                })
+            || ![
+                "/api/v1/forwards",
+                "/api/v1/namespaces",
+                "/api/v1/tools",
+                "/api/v1/resources",
+                "/api/v1/prompts",
+                "/api/v1/tool-handlers",
+                "/api/v1/agents",
+            ]
+            .iter()
+            .any(|prefix| {
+                ctx.path
+                    .strip_prefix(prefix)
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+            })
         {
             return self.wanaku.dispatch(ctx).await;
         }
@@ -127,6 +141,9 @@ impl ManagementService {
 
 fn raw_lifecycle_conflict(registry: &InMemoryRegistry, ctx: &HttpContext<'_>) -> bool {
     let body = ctx.body.unwrap_or_default();
+    if capability_write_conflicts(registry, ctx, body) {
+        return true;
+    }
     match (ctx.method, ctx.path) {
         ("POST", "/api/v1/forwards" | "/api/v1/forwards/") => {
             forward_write_conflicts(registry, body)
@@ -152,23 +169,17 @@ fn raw_lifecycle_conflict(registry: &InMemoryRegistry, ctx: &HttpContext<'_>) ->
 fn forward_write_conflicts(registry: &InMemoryRegistry, body: &str) -> bool {
     serde_json::from_str::<ForwardEntry>(body).is_ok_and(|forward| {
         forward.labels.keys().any(|key| is_lifecycle_label(key))
-            || protects_forward(registry, &forward.name)
-            || forward
-                .namespace
-                .as_deref()
-                .is_some_and(|name| protects_namespace(registry, name))
+            || forward_target_conflicts(registry, &forward.name)
+            || protects_namespace(
+                registry,
+                forward.namespace.as_deref().unwrap_or(DEFAULT_NAMESPACE),
+            )
     })
 }
 
 fn forward_path_conflicts(registry: &InMemoryRegistry, path: &str) -> bool {
     path.strip_prefix("/api/v1/forwards/").is_some_and(|name| {
-        !name.is_empty()
-            && !name.contains('/')
-            && (protects_forward(registry, name)
-                || registry
-                    .get_forward(name)
-                    .and_then(|forward| forward.namespace)
-                    .is_some_and(|namespace| protects_namespace(registry, &namespace)))
+        !name.is_empty() && !name.contains('/') && forward_target_conflicts(registry, name)
     })
 }
 
@@ -185,6 +196,84 @@ fn namespace_write_conflicts(
                 .iter()
                 .flatten()
                 .any(|member| protects_namespace(registry, member))
+    })
+}
+
+fn forward_target_conflicts(registry: &InMemoryRegistry, name: &str) -> bool {
+    protects_forward(registry, name)
+        || registry.get_forward(name).is_some_and(|forward| {
+            protects_namespace(
+                registry,
+                forward.namespace.as_deref().unwrap_or(DEFAULT_NAMESPACE),
+            )
+        })
+}
+
+fn capability_write_conflicts(
+    registry: &InMemoryRegistry,
+    ctx: &HttpContext<'_>,
+    body: &str,
+) -> bool {
+    let Some((collection, child)) = ctx
+        .path
+        .strip_prefix("/api/v1/")
+        .map(|path| path.split_once('/').unwrap_or((path, "")))
+    else {
+        return false;
+    };
+    match (collection, ctx.method, child) {
+        ("tools" | "resources" | "prompts", "PUT" | "DELETE", child)
+            if capability_item_mutation(ctx.method, child) =>
+        {
+            let namespace = form_urlencoded::parse(ctx.query.unwrap_or_default().as_bytes())
+                .find(|(key, _)| key == "namespace")
+                .map_or_else(|| DEFAULT_NAMESPACE.into(), |(_, value)| value);
+            protects_namespace(registry, &namespace)
+        }
+        ("agents", "POST", "") if ctx.path == "/api/v1/agents" => {
+            serde_json::from_str::<AgentEntry>(body)
+                .is_ok_and(|agent| protects_namespace(registry, &agent.namespace))
+        }
+        ("agents", "PUT" | "DELETE", child) | ("tool-handlers", "DELETE", child) => child
+            .split_once('/')
+            .filter(|(ns, name)| !ns.is_empty() && !name.is_empty() && !name.contains('/'))
+            .is_some_and(|(ns, _)| protects_namespace(registry, ns)),
+        ("tool-handlers", "PUT", "") if ctx.path == "/api/v1/tool-handlers" => {
+            handler_snapshot_conflicts(registry, body)
+        }
+        _ => false,
+    }
+}
+
+fn capability_item_mutation(method: &str, child: &str) -> bool {
+    match method {
+        "DELETE" => !child.is_empty(),
+        "PUT" => child
+            .strip_suffix("/enable")
+            .or_else(|| child.strip_suffix("/disable"))
+            .is_some_and(|name| !name.is_empty()),
+        _ => false,
+    }
+}
+
+fn handler_snapshot_conflicts(registry: &InMemoryRegistry, body: &str) -> bool {
+    #[derive(serde::Deserialize)]
+    struct HandlerTarget {
+        tool: ToolEntry,
+    }
+
+    serde_json::from_str::<Vec<HandlerTarget>>(body).is_ok_and(|targets| {
+        let is_managed = |tool: &ToolEntry| {
+            protects_namespace(
+                registry,
+                tool.namespace.as_deref().unwrap_or(DEFAULT_NAMESPACE),
+            )
+        };
+        targets.iter().any(|target| is_managed(&target.tool))
+            || registry
+                .list_tools()
+                .iter()
+                .any(|tool| tool.type_ == "wasm" && is_managed(tool))
     })
 }
 
