@@ -1,5 +1,5 @@
 use std::num::NonZeroUsize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -8,6 +8,13 @@ use serde::Deserialize;
 #[serde(default, deny_unknown_fields)]
 pub struct RhafConfig {
     pub search: SearchConfig,
+    pub catalog: CatalogConfig,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct CatalogConfig {
+    pub path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,14 +37,18 @@ impl RhafConfig {
             return Ok(Self::default());
         };
         let content = std::fs::read_to_string(path).context("cannot read RHAF configuration")?;
-        serde_yaml::from_str(&content).map_err(|error| match error.location() {
+        let mut config: Self = serde_yaml::from_str(&content).map_err(|error| match error.location() {
             Some(location) => anyhow::anyhow!(
                 "invalid RHAF configuration at line {}, column {}; check search.max_results is a positive integer and keys are supported",
                 location.line(),
                 location.column()
             ),
             None => anyhow::anyhow!("invalid RHAF configuration"),
-        })
+        })?;
+        if let (Some(catalog), Some(parent)) = (&mut config.catalog.path, path.parent()) {
+            *catalog = parent.join(&*catalog);
+        }
+        Ok(config)
     }
 }
 
@@ -58,6 +69,19 @@ mod tests {
                 .get(),
             7
         );
+        Ok(())
+    }
+
+    #[test]
+    fn resolves_catalog_path_from_the_rhaf_settings_directory() -> Result<()> {
+        let directory = tempfile::tempdir()?;
+        let settings = directory.path().join("rhaf.yaml");
+        std::fs::write(&settings, "catalog: {path: products.yaml}")?;
+        assert_eq!(
+            RhafConfig::load(Some(&settings))?.catalog.path,
+            Some(directory.path().join("products.yaml"))
+        );
+        assert!(RhafConfig::load(None)?.catalog.path.is_none());
         Ok(())
     }
 

@@ -1,5 +1,6 @@
 //! Embedded Wanaku runtime for RHAF Portal Core.
 
+mod catalog;
 mod config;
 mod credentials;
 mod feature_config;
@@ -34,10 +35,15 @@ fn main() -> anyhow::Result<()> {
         praxis_tls::provider::installed(),
         "TLS provider unavailable"
     );
-    run(&args, &pipeline)
+    let catalog = catalog::load(rhaf.catalog.path.as_deref());
+    run(&args, &pipeline, catalog)
 }
 
-fn run(args: &startup::Args, pipeline: &praxis_core::config::Config) -> anyhow::Result<()> {
+fn run(
+    args: &startup::Args,
+    pipeline: &praxis_core::config::Config,
+    catalog: rhaf_api::models::Catalog,
+) -> anyhow::Result<()> {
     let bootstrap = startup::load_bootstrap(args.wanaku_config.as_deref())?;
     let governance = startup::governance(bootstrap.as_ref())?;
     let _data_lock = startup::lock_data_directory(&args.data_dir)?;
@@ -55,7 +61,7 @@ fn run(args: &startup::Args, pipeline: &praxis_core::config::Config) -> anyhow::
     )
     .map_err(|_| anyhow::anyhow!(ASSEMBLY_ERROR))?;
     persistence.activate()?;
-    let runtime_result = runtime::run(args, pipeline, app, management);
+    let runtime_result = runtime::run(args, pipeline, app, management, catalog);
     let audit_result = persistence.retry_failed_audit(std::time::Duration::from_secs(10));
     runtime_result.and(audit_result)?;
     tracing::info!("RHAF Portal Core stopped");

@@ -5,6 +5,80 @@ use serde_json::json;
 use super::Harness;
 
 impl Harness {
+    pub async fn verify_product_catalog(&self) -> Result<()> {
+        let settings = self.evidence.join("rhaf.yaml");
+        let catalog = self.evidence.join("products.yaml");
+        std::fs::write(&settings, "catalog: {path: products.yaml}")?;
+        for (status, content, products) in [
+            ("absent", None, json!([])),
+            (
+                "loaded",
+                Some("products: [{id: docs, displayName: Documentation}]"),
+                json!([{"id": "docs", "displayName": "Documentation", "links": []}]),
+            ),
+            (
+                "invalid",
+                Some("products: [{id: HIDDEN, displayName: ' '}]"),
+                json!([]),
+            ),
+        ] {
+            if let Some(content) = content {
+                std::fs::write(&catalog, content)?;
+            }
+            self.verify_catalog_startup(&settings, status, &products)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn verify_catalog_startup(
+        &self,
+        settings: &std::path::Path,
+        status: &str,
+        products: &serde_json::Value,
+    ) -> Result<()> {
+        let mut command = self.core_command(&self.config(), &self.data_dir());
+        command.arg("--rhaf-config").arg(settings);
+        let core = self
+            .start(
+                command,
+                &format!("catalog-{status}.log"),
+                &self.management_url("/api/v1/tools"),
+                super::ExitPolicy::Core,
+            )
+            .await?;
+        self.verify_catalog_response(status, products).await?;
+        if status == "invalid" {
+            self.verify_raw_delegation().await?;
+            self.verify_unavailable_registration().await?;
+        }
+        core.stop().await
+    }
+
+    async fn verify_catalog_response(
+        &self,
+        status: &str,
+        products: &serde_json::Value,
+    ) -> Result<()> {
+        let reply = self
+            .http
+            .request(
+                Method::GET,
+                &self.management_url("/api/rhaf/v1/catalog"),
+                None,
+            )
+            .await?;
+        ensure!(reply.status == 200 && reply.body["error"].is_null());
+        let data = &reply.body["data"];
+        ensure!(data["status"] == status && &data["products"] == products);
+        if status == "invalid" {
+            ensure!(data["message"].is_string() && !reply.body.to_string().contains("HIDDEN"));
+        } else {
+            ensure!(data["message"].is_null());
+        }
+        Ok(())
+    }
+
     pub async fn verify_management_wrapper(&self) -> Result<()> {
         let client = reqwest::Client::builder()
             .no_proxy()

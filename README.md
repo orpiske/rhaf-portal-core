@@ -119,6 +119,31 @@ search:
 setting reserves the result limit for the progressive search implementation.
 Core rejects unsupported RHAF keys. Do not put RHAF keys in the Wanaku file.
 
+Set `catalog.path` in the RHAF settings file to serve a product catalog.
+Use an absolute path or a path relative to the RHAF settings file.
+
+```yaml
+catalog:
+  path: products.yaml
+```
+
+Create `products.yaml` with a `products` list.
+
+```yaml
+products:
+  - id: documentation
+    displayName: Documentation
+    links:
+      - label: User guide
+        url: https://example.org/guide
+```
+
+Give each product a unique ID and a display name. Links are optional.
+Give each link a label and an absolute HTTP or HTTPS URL without credentials.
+Restart Core to load changes. Read the catalog at `GET /api/rhaf/v1/catalog`.
+Core continues to serve MCP and registration requests if the catalog is absent
+or invalid.
+
 Start Core with both configuration files:
 
 ```bash

@@ -112,11 +112,20 @@ reserved ownership metadata.
 
 ## Product catalog
 
-`GET /api/rhaf/v1/catalog` returns loaded, absent, or invalid status. An absent or
-invalid catalog returns HTTP 200 with an empty product list. An absent catalog
-can have a null message. An invalid catalog includes a safe diagnostic message.
-Diagnostic messages must exclude file contents and credentials. Catalog reads do
-not register products, probe links, or report product availability.
+`GET /api/rhaf/v1/catalog` returns HTTP 200 with `data` and a null `error`.
+The `data` object contains `status`, `products`, and `message`.
+Core loads the configured catalog at startup.
+
+| Status | Products | Message |
+| --- | --- | --- |
+| `loaded` | The configured product list | `null` |
+| `absent` | Empty | `null` |
+| `invalid` | Empty | A diagnostic without file contents or credentials |
+
+Core returns `absent` if the catalog path is unset or the file is missing.
+A read error or an invalid entry makes the complete catalog `invalid`.
+Catalog reads do not register products, probe links, or report product
+availability.
 
 ## Raw Wanaku management APIs
 

@@ -18,6 +18,7 @@ pub fn run(
     pipeline: &Config,
     app: App,
     listener: std::net::TcpListener,
+    catalog: rhaf_api::models::Catalog,
 ) -> Result<()> {
     let registry = app.registry.clone();
     let mut server = PingoraServerRuntime::new(pipeline);
@@ -31,6 +32,7 @@ pub fn run(
         lifecycle,
         Arc::clone(&app.broker),
         Some(Arc::clone(&app.audit_sink)),
+        catalog,
     );
     let management = crate::listeners::BoundManagement::new(listener, management)?;
     server.server_mut().add_service(management);
