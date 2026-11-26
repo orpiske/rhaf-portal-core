@@ -1,3 +1,7 @@
+mod write;
+
+pub use write::{WriteError, WriteMode, WriteOutcome};
+
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
