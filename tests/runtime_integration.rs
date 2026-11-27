@@ -16,6 +16,13 @@ async fn management_wrapper_without_external_services() -> Result<()> {
 }
 
 #[tokio::test]
+async fn forward_url_credentials_stay_out_of_discovery_logs() -> Result<()> {
+    Harness::management_only()?
+        .verify_forward_url_redaction()
+        .await
+}
+
+#[tokio::test]
 async fn product_catalog_without_external_services() -> Result<()> {
     Harness::management_only()?.verify_product_catalog().await
 }

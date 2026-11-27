@@ -1,3 +1,4 @@
+mod forward_logs;
 mod governance;
 pub mod http;
 mod lifecycle;
