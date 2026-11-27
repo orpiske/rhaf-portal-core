@@ -132,7 +132,7 @@ availability.
 Keep the upstream schema separate from the RHAF schema. The raw forward routes
 used by the UI are `/api/v1/forwards` and `/api/v1/forwards/{name}`. Their source is
 the pinned Wanaku
-[`server/src/openapi.rs`](https://github.com/wanaku-ai/wanaku/blob/2a4271a9a559b5150fa4b71b586cb0bf09a83baf/server/src/openapi.rs).
+[`server/src/openapi.rs`](https://raw.githubusercontent.com/wanaku-ai/wanaku/2a4271a9a559b5150fa4b71b586cb0bf09a83baf/server/src/openapi.rs).
 Wanaku publishes its consumer snapshot at
 [`ui/admin/openapi.json`](https://raw.githubusercontent.com/wanaku-ai/wanaku/2a4271a9a559b5150fa4b71b586cb0bf09a83baf/ui/admin/openapi.json).
 Use that revision when consuming the raw APIs. Update these references when the
